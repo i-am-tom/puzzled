@@ -29,7 +29,7 @@ instance (LambdaF :<: g) => Exchange LambdaF g where
     exchangeAlg _ r (Lam e) n = In $ lam $ (r e) (n + 1)
     exchangeAlg _ r (e1 :<^>: e2) n = In $ (r e1 $ n) <^> (r e2 $ n)
 
---TODO: Problem: Exchange has to be pushed into higher functor
+--The ((f :+: g) :<: h) constraint is no needed in the code, but as a dependency from the superclass, because Exchange implies it
 instance forall f g h. (Exchange f h, Exchange g h, ((f :+: g) :<: h)) => Exchange (f :+: g) h where
     exchangeAlg x r (Inl f) n = In $ inj $ fmap (flip r n) f
     exchangeAlg x r (Inr g) n = In $ inj $ fmap (flip r n) g
