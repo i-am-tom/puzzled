@@ -13,28 +13,30 @@ lam x = inj $ Lam x
 (<^>) :: (LambdaF :<: g) => a -> a -> g a
 (<^>) a b = inj $ a :<^>: b
 
-class (f :<: g) => Exchange f g where
-    exchangeAlg :: Fix g -> Algebra f (Int -> Fix g)
+class (Functor f) => Exchange f where
+    exchangeAlg :: Fix f -> Algebra f (Int -> Fix f)
 
-exchange :: (Exchange f g) => Fix f -> Fix g -> Fix g
+exchange :: (Exchange f) => Fix f -> Fix f -> Fix f
 exchange = exchange' 0
 
-exchange' :: (Exchange f g) => Int -> Fix f -> Fix g -> Fix g
+exchange' :: (Exchange f) => Int -> Fix f -> Fix f -> Fix f
 exchange' n e x = foldF (exchangeAlg x) e $ n
 
-instance (LambdaF :<: g) => Exchange LambdaF g where
-    exchangeAlg x _ (Var n') n
+instance (Functor f, LambdaF :<: f) => Exchange f where
+    exchangeAlg x _ (proj -> Just (Var n')) n
         | n == n' = x
         | otherwise = In $ var n'
-    exchangeAlg _ r (Lam e) n = In $ lam $ (r e) (n + 1)
-    exchangeAlg _ r (e1 :<^>: e2) n = In $ (r e1 $ n) <^> (r e2 $ n)
+    exchangeAlg _ r (proj -> Just (Lam e)) n = In $ lam $ (r e) (n + 1)
+    exchangeAlg _ r (proj -> Just (e1 :<^>: e2)) n = In $ (r e1 $ n) <^> (r e2 $ n)
+    exchangeAlg _ r e n = In $ fmap (flip r n) e --TODO: Probably not the intended behaviour
 
---The ((f :+: g) :<: h) constraint is no needed in the code, but as a dependency from the superclass, because Exchange implies it
-instance forall f g h. (Exchange f h, Exchange g h, ((f :+: g) :<: h)) => Exchange (f :+: g) h where
+{-}
+instance Exchange (f :+: g) where
     exchangeAlg x r (Inl f) n = In $ inj $ fmap (flip r n) f
     exchangeAlg x r (Inr g) n = In $ inj $ fmap (flip r n) g
+    -}
 
-
+{-}
 class EvalStep f g where
     evalStepAlg :: Algebra f (Fix g)
 
@@ -42,4 +44,4 @@ instance (Exchange LambdaF g) => EvalStep LambdaF g where
     evalStepAlg r ((r -> In (proj -> (Just (Lam (proj -> Just e))))) :<^>: x) = exchange (In e) x
     evalStepAlg r (e1 :<^>: e2) = undefined
     evalStepAlg r e = In $ inj $ (fmap r e)
-        
+        -}
