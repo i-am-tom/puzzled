@@ -28,6 +28,7 @@ default-extensions:
 - UndecidableInstances
 - DeriveFunctor
 - ScopedTypeVariables
+- ViewPatterns
 
 dependencies:
 - base >= 4.7 && < 5

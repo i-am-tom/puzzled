@@ -16,11 +16,11 @@ lam x = inj $ Lam x
 class (f :<: g) => Exchange f g where
     exchangeAlg :: Fix g -> Algebra f (Int -> Fix g)
 
-exchange :: (Exchange f g) => Fix g -> Fix f -> Fix g
+exchange :: (Exchange f g) => Fix f -> Fix g -> Fix g
 exchange = exchange' 0
 
-exchange' :: (Exchange f g) => Int -> Fix g -> Fix f -> Fix g
-exchange' n x e = foldF (exchangeAlg x) e $ n
+exchange' :: (Exchange f g) => Int -> Fix f -> Fix g -> Fix g
+exchange' n e x = foldF (exchangeAlg x) e $ n
 
 instance (LambdaF :<: g) => Exchange LambdaF g where
     exchangeAlg x _ (Var n') n
@@ -35,7 +35,11 @@ instance forall f g h. (Exchange f h, Exchange g h, ((f :+: g) :<: h)) => Exchan
     exchangeAlg x r (Inr g) n = In $ inj $ fmap (flip r n) g
 
 
-class EvalStep f where
-    evalStepAlg :: f a -> a
+class EvalStep f g where
+    evalStepAlg :: Algebra f (Fix g)
 
-
+instance (Exchange LambdaF g) => EvalStep LambdaF g where
+    evalStepAlg r ((r -> In (proj -> (Just (Lam (proj -> Just e))))) :<^>: x) = exchange (In e) x
+    evalStepAlg r (e1 :<^>: e2) = undefined
+    evalStepAlg r e = In $ inj $ (fmap r e)
+        
