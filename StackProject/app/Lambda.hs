@@ -2,46 +2,53 @@ module Lambda where
 
 import DTC
 
-data LambdaF a = Var Int | Lam a | a :<^>: a deriving (Show, Eq, Ord, Functor)
+data DeBVarF a = DeBVarF Int deriving (Show, Eq, Ord, Functor)
+data LamF a = LamF a deriving (Show, Eq, Ord, Functor)
+data ApplF a = ApplF a a deriving (Show, Eq, Ord, Functor)
 
-var :: (LambdaF :<: g) => Int -> g a
-var x = inj $ Var x
+var :: (DeBVarF :<: g) => Int -> g a
+var x = inj $ DeBVarF x
 
-lam :: (LambdaF :<: g) => a -> g a
-lam x = inj $ Lam x
+lam :: (LamF :<: g) => a -> g a
+lam x = inj $ LamF x
 
-(<^>) :: (LambdaF :<: g) => a -> a -> g a
-(<^>) a b = inj $ a :<^>: b
+(<^>) :: (ApplF :<: g) => a -> a -> g a
+(<^>) a b = inj $ ApplF a b
 
-class (Functor f) => Exchange f where
-    exchangeAlg :: Fix f -> Algebra f (Int -> Fix f)
+class Exchange f a where
+    exchangeAlg :: a -> Algebra f (Int -> a)
 
-exchange :: (Exchange f) => Fix f -> Fix f -> Fix f
+exchange :: (Functor f, Exchange f (Fix f)) => Fix f -> Fix f -> Fix f
 exchange = exchange' 0
 
-exchange' :: (Exchange f) => Int -> Fix f -> Fix f -> Fix f
+exchange' :: (Functor f, Exchange f (Fix f)) => Int -> Fix f -> Fix f -> Fix f
 exchange' n e x = foldF (exchangeAlg x) e $ n
 
-instance (Functor f, LambdaF :<: f) => Exchange f where
-    exchangeAlg x _ (proj -> Just (Var n')) n
-        | n == n' = x
+instance (DeBVarF :<: f) => Exchange DeBVarF (Fix f) where
+    exchangeAlg x _ (DeBVarF n') n
+        | n' == n = x
         | otherwise = In $ var n'
-    exchangeAlg _ r (proj -> Just (Lam e)) n = In $ lam $ (r e) (n + 1)
-    exchangeAlg _ r (proj -> Just (e1 :<^>: e2)) n = In $ (r e1 $ n) <^> (r e2 $ n)
-    exchangeAlg _ r e n = In $ fmap (flip r n) e --TODO: Probably not the intended behaviour
 
-{-}
-instance Exchange (f :+: g) where
+instance (LamF :<: f) => Exchange LamF (Fix f) where
+    exchangeAlg x r (LamF e) n = r e (n + 1)
+
+instance (ApplF :<: f) => Exchange ApplF (Fix f) where
+    exchangeAlg x r (ApplF a b) n = In $ (r a n) <^> (r b n)
+
+
+instance (f :<: h, g :<: h) => Exchange (f :+: g) (Fix h) where
     exchangeAlg x r (Inl f) n = In $ inj $ fmap (flip r n) f
     exchangeAlg x r (Inr g) n = In $ inj $ fmap (flip r n) g
-    -}
 
-{-}
-class EvalStep f g where
-    evalStepAlg :: Algebra f (Fix g)
 
-instance (Exchange LambdaF g) => EvalStep LambdaF g where
-    evalStepAlg r ((r -> In (proj -> (Just (Lam (proj -> Just e))))) :<^>: x) = exchange (In e) x
-    evalStepAlg r (e1 :<^>: e2) = undefined
-    evalStepAlg r e = In $ inj $ (fmap r e)
-        -}
+class EvalStep f a where
+    evalStepAlg :: Algebra f a
+
+instance (DeBVarF :<: f) => EvalStep DeBVarF (Fix f) where
+    evalStepAlg r v = In $ inj $ fmap r v
+
+instance (LamF :<: f) => EvalStep LamF (Fix f) where
+    evalStepAlg r l = In $ inj $ fmap r l
+
+instance (ApplF :<: f) => EvalStep ApplF (Fix f) where
+    evalStepAlg r (ApplF a b) = _
