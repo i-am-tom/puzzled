@@ -45,10 +45,10 @@ class EvalStep f a where
     evalStepAlg :: Algebra f a
 
 instance (DeBVarF :<: f) => EvalStep DeBVarF (Fix f) where
-    evalStepAlg r v = In $ inj $ fmap r v
+    evalStepAlg _ (DeBVarF n) = In $ var n
 
 instance (LamF :<: f) => EvalStep LamF (Fix f) where
-    evalStepAlg r l = In $ inj $ fmap r l
+    evalStepAlg r l = In $ inj $ fmap r l --TODO: recursive call should not be used! Id is returned!
 
 instance (ApplF :<: f) => EvalStep ApplF (Fix f) where
-    evalStepAlg r (ApplF a b) = _
+    evalStepAlg r (ApplF a b) = _ --TODO: Maybe we need touple of evaluated an nonevaluated value. Problem: May read a value without changing it
