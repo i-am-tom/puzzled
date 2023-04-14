@@ -1,10 +1,22 @@
 module Lambda where
 
 import DTC
+import Text.Show.Combinators
 
-data DeBVarF a = DeBVarF Int deriving (Show, Eq, Ord, Functor)
-data LamF a = LamF a deriving (Show, Eq, Ord, Functor)
-data ApplF a = ApplF a a deriving (Show, Eq, Ord, Functor)
+data DeBVarF a = DeBVarF Int deriving (Eq, Ord, Functor)
+data LamF a = LamF a deriving (Eq, Ord, Functor)
+data ApplF a = ApplF a a deriving (Eq, Ord, Functor)
+
+instance (Show a) => Show (DeBVarF a) where
+    showsPrec d (DeBVarF n) = (showCon "var" @| n) d
+
+instance (Show a) => Show (LamF a) where
+    showsPrec d (LamF e) = (showCon "lam" @| e) d
+
+instance (Show a) => Show (ApplF a) where
+    showsPrec d (ApplF a b) = (showInfixl "<^>" 5 (flip showsPrec a) (flip showsPrec b)) d
+
+type LambdaF = DeBVarF :+: LamF :+: ApplF
 
 var :: (DeBVarF :<: g) => Int -> Fix g
 var x = inject $ DeBVarF x
@@ -12,6 +24,7 @@ var x = inject $ DeBVarF x
 lam :: (LamF :<: g) => Fix g -> Fix g
 lam x = inject $ LamF x
 
+infixl 5 <^>
 (<^>) :: (ApplF :<: g) => Fix g -> Fix g -> Fix g
 (<^>) a b = inject $ ApplF a b
 

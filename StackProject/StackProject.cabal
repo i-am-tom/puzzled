@@ -40,9 +40,12 @@ library
       DeriveFunctor
       ScopedTypeVariables
       ViewPatterns
+      QuantifiedConstraints
+      StandaloneDeriving
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
+    , show-combinators
   default-language: Haskell2010
 
 executable StackProject-exe
@@ -64,10 +67,13 @@ executable StackProject-exe
       DeriveFunctor
       ScopedTypeVariables
       ViewPatterns
+      QuantifiedConstraints
+      StandaloneDeriving
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       StackProject
     , base >=4.7 && <5
+    , show-combinators
   default-language: Haskell2010
 
 test-suite StackProject-test
@@ -87,8 +93,11 @@ test-suite StackProject-test
       DeriveFunctor
       ScopedTypeVariables
       ViewPatterns
+      QuantifiedConstraints
+      StandaloneDeriving
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       StackProject
     , base >=4.7 && <5
+    , show-combinators
   default-language: Haskell2010

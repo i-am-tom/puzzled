@@ -29,9 +29,12 @@ default-extensions:
 - DeriveFunctor
 - ScopedTypeVariables
 - ViewPatterns
+- QuantifiedConstraints
+- StandaloneDeriving
 
 dependencies:
 - base >= 4.7 && < 5
+- show-combinators
 
 ghc-options:
 - -Wall
