@@ -16,3 +16,6 @@ data (f :+: g) a = Inl (f a) | Inr (g a)
 instance (Functor f) => f :<: f where
     inj = id
     proj = Just
+
+inject :: (f :<: g) => f (Fix g) -> Fix g
+inject = In . inj
