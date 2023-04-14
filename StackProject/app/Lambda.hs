@@ -41,14 +41,30 @@ instance (f :<: h, g :<: h) => Exchange (f :+: g) (Fix h) where
     exchangeAlg x r (Inr g) n = In $ inj $ fmap (flip r n) g
 
 
+data EvalRes a = EvalRes {
+    orig :: a,
+    res :: a
+}
+
 class EvalStep f a where
-    evalStepAlg :: Algebra f a
+    evalStepAlg :: Algebra f (EvalRes a)
 
 instance (DeBVarF :<: f) => EvalStep DeBVarF (Fix f) where
-    evalStepAlg _ (DeBVarF n) = In $ var n
+    evalStepAlg _ (DeBVarF n) = EvalRes {
+        orig = In $ var n,
+        res = In $ var n
+    }
 
 instance (LamF :<: f) => EvalStep LamF (Fix f) where
-    evalStepAlg r l = In $ inj $ fmap r l --TODO: recursive call should not be used! Id is returned!
+    evalStepAlg r (LamF e) = EvalRes {
+        orig = In $ lam (orig $ lam e)
+        In $ inj $ fmap r l
+    }
 
-instance (ApplF :<: f) => EvalStep ApplF (Fix f) where
-    evalStepAlg r (ApplF a b) = _ --TODO: Maybe we need touple of evaluated an nonevaluated value. Problem: May read a value without changing it
+instance (ApplF :<: f, LamF :<: f) => EvalStep ApplF (Fix f) where
+    evalStepAlg r (ApplF a b) = EvalRes {
+        orig = In $ (orig $ r a) <^> (orig $ r b),
+        res = case res (r a) of
+            In (proj -> Just (LamF e)) -> _
+            _ -> In $ (orig $ r a) <^> (orig $ r b)
+    }
