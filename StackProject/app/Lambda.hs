@@ -49,9 +49,9 @@ instance (ApplF :<: f) => Exchange ApplF (Fix f) where
     exchangeAlg _ r (ApplF a b) n = (r a n) <^> (r b n)
 
 
-instance (f :<: h, g :<: h) => Exchange (f :+: g) (Fix h) where
-    exchangeAlg _ r (Inl f) n = inject $ fmap (flip r n) f
-    exchangeAlg _ r (Inr g) n = inject $ fmap (flip r n) g
+instance (Exchange f (Fix h), Exchange g (Fix h)) => Exchange (f :+: g) (Fix h) where
+    exchangeAlg x r (Inl f) n = exchangeAlg x r f n
+    exchangeAlg x r (Inr g) n = exchangeAlg x r g n
 
 
 data EvalRes a = EvalRes {
@@ -91,3 +91,7 @@ instance (ApplF :<: f, LamF :<: f, Exchange f (Fix f)) => EvalStep ApplF (Fix f)
             _ -> (orig $ r a) <^> (orig $ r b)
     }
 
+instance (EvalStep f (Fix h), EvalStep g (Fix h)) => 
+    EvalStep (f :+: g) (Fix h) where
+    evalStepAlg r (Inl f) = evalStepAlg r f
+    evalStepAlg r (Inr g) = evalStepAlg r g
