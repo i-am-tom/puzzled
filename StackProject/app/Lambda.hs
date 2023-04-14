@@ -14,7 +14,7 @@ instance (Show a) => Show (LamF a) where
     showsPrec d (LamF e) = (showCon "lam" @| e) d
 
 instance (Show a) => Show (ApplF a) where
-    showsPrec d (ApplF a b) = (showInfixl "<^>" 5 (flip showsPrec a) (flip showsPrec b)) d
+    showsPrec d (ApplF a b) = showInfixl "<^>" 5 (`showsPrec` a) (`showsPrec` b) d
 
 type LambdaF = DeBVarF :+: LamF :+: ApplF
 
