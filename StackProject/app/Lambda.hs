@@ -30,15 +30,15 @@ instance (DeBVarF :<: f) => Exchange DeBVarF (Fix f) where
         | otherwise = In $ var n'
 
 instance (LamF :<: f) => Exchange LamF (Fix f) where
-    exchangeAlg x r (LamF e) n = r e (n + 1)
+    exchangeAlg _ r (LamF e) n = In $ lam $ r e (n + 1)
 
 instance (ApplF :<: f) => Exchange ApplF (Fix f) where
-    exchangeAlg x r (ApplF a b) n = In $ (r a n) <^> (r b n)
+    exchangeAlg _ r (ApplF a b) n = In $ (r a n) <^> (r b n)
 
 
 instance (f :<: h, g :<: h) => Exchange (f :+: g) (Fix h) where
-    exchangeAlg x r (Inl f) n = In $ inj $ fmap (flip r n) f
-    exchangeAlg x r (Inr g) n = In $ inj $ fmap (flip r n) g
+    exchangeAlg _ r (Inl f) n = In $ inj $ fmap (flip r n) f
+    exchangeAlg _ r (Inr g) n = In $ inj $ fmap (flip r n) g
 
 
 data EvalRes a = EvalRes {
@@ -49,6 +49,9 @@ data EvalRes a = EvalRes {
 class EvalStep f a where
     evalStepAlg :: Algebra f (EvalRes a)
 
+evalStep :: (Functor f, EvalStep f (Fix f)) => Fix f -> Fix f
+evalStep = res . foldF evalStepAlg
+
 instance (DeBVarF :<: f) => EvalStep DeBVarF (Fix f) where
     evalStepAlg _ (DeBVarF n) = EvalRes {
         orig = In $ var n,
@@ -57,14 +60,14 @@ instance (DeBVarF :<: f) => EvalStep DeBVarF (Fix f) where
 
 instance (LamF :<: f) => EvalStep LamF (Fix f) where
     evalStepAlg r (LamF e) = EvalRes {
-        orig = In $ lam (orig $ lam e)
-        In $ inj $ fmap r l
+        orig = In $ lam (orig $ r e),
+        res = In $ lam (orig $ r e)
     }
 
-instance (ApplF :<: f, LamF :<: f) => EvalStep ApplF (Fix f) where
+instance (ApplF :<: f, LamF :<: f, Exchange f (Fix f)) => EvalStep ApplF (Fix f) where
     evalStepAlg r (ApplF a b) = EvalRes {
         orig = In $ (orig $ r a) <^> (orig $ r b),
         res = case res (r a) of
-            In (proj -> Just (LamF e)) -> _
+            In (proj -> Just (LamF e)) -> exchange' 1 e (orig $ r b)
             _ -> In $ (orig $ r a) <^> (orig $ r b)
     }
