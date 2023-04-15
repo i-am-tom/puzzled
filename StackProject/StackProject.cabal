@@ -42,6 +42,10 @@ library
       ViewPatterns
       QuantifiedConstraints
       StandaloneDeriving
+      ConstraintKinds
+      FunctionalDependencies
+      GADTs
+      UndecidableSuperClasses
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
@@ -54,6 +58,7 @@ executable StackProject-exe
       DTC
       Lambda
       Propagator
+      VarMonads
       Paths_StackProject
   hs-source-dirs:
       app
@@ -69,6 +74,10 @@ executable StackProject-exe
       ViewPatterns
       QuantifiedConstraints
       StandaloneDeriving
+      ConstraintKinds
+      FunctionalDependencies
+      GADTs
+      UndecidableSuperClasses
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       StackProject
@@ -95,6 +104,10 @@ test-suite StackProject-test
       ViewPatterns
       QuantifiedConstraints
       StandaloneDeriving
+      ConstraintKinds
+      FunctionalDependencies
+      GADTs
+      UndecidableSuperClasses
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       StackProject
