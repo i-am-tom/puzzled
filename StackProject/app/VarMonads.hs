@@ -2,6 +2,8 @@
 {-# HLINT ignore "Use camelCase" #-}
 module VarMonads where
 
+import Data.Typeable
+
 class NCVarMonad c v m | v -> c where
     new :: (c a) => a -> m (v a)
     read :: v a -> m a
@@ -31,13 +33,21 @@ class SpecValVar v b where
     valPtr :: v a -> v b
 
 data CHOAS c r where
-    CHOAS_Val :: (c a) => a -> CHOAS c a
-    CHOAS_Appl :: CHOAS c (a -> b) -> CHOAS c a -> CHOAS c b
+    CHOAS_Val :: (c a, Typeable a) => a -> CHOAS c a
+    CHOAS_Appl :: (Typeable c, Typeable a, Typeable b) => CHOAS c (a -> b) -> CHOAS c a -> CHOAS c b
     CHOAS_Lam :: (CHOAS c a -> CHOAS c b) -> CHOAS c (a -> b)
+
 
 class (c a, d a) => C_AND c d a
 instance (c a, d a) => C_AND c d a
 class (forall a. C_AND c d a) => CDeriv c d
 instance (forall a. C_AND c d a) => CDeriv c d
 
-deriving instance CDeriv c Eq => Eq (CHOAS c r) 
+instance (Typeable r, CDeriv c Eq) => Eq (CHOAS c r) where
+    (CHOAS_Val x) == (CHOAS_Val y) = x == y
+    (CHOAS_Appl ab a) == (CHOAS_Appl ab' a') = 
+        typeOf ab == typeOf ab' && 
+        (cast ab == Just ab') &&
+        (cast a == Just a')
+    (CHOAS_Lam f) == (CHOAS_Lam f') = f == f'
+    _ == _ = False
