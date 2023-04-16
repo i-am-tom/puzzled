@@ -53,5 +53,5 @@ instance (Typeable r, CDeriv c Eq) => Eq (CHOAS c r) where
         typeOf ab == typeOf ab' && 
         (cast ab == Just ab') &&
         (cast a == Just a')
-    (CHOAS_Lam f) == (CHOAS_Lam f') = f == f'
+    (CHOAS_Lam f) == (CHOAS_Lam f') = f == f' --TODO: This might need some actual lambda calculus
     _ == _ = False

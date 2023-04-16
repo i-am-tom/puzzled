@@ -2,6 +2,7 @@ module Lambda where
 
 import DTC
 import Text.Show.Combinators
+import Data.Kind
 
 data DeBVarF a = DeBVarF Int deriving (Eq, Ord, Functor)
 data LamF a = LamF a deriving (Eq, Ord, Functor)
@@ -95,3 +96,18 @@ instance (EvalStep f (Fix h), EvalStep g (Fix h)) =>
     EvalStep (f :+: g) (Fix h) where
     evalStepAlg r (Inl f) = evalStepAlg r f
     evalStepAlg r (Inr g) = evalStepAlg r g
+
+
+class HOAS rep where
+    hoas_appl :: rep (a -> b) -> rep a -> rep b
+    hoas_lam :: (rep a -> rep b) -> rep (a -> b)
+
+data LamR rep b where
+    ApplR :: rep (a -> b) -> rep a -> LamR rep b
+    LamR :: (rep a -> rep c) -> LamR rep (a -> c) --TODO: still not made sure that variables are bound to their types!
+
+data FixR (f :: (Type -> Type) -> Type -> Type) b = InR (f (FixR f) b)
+
+instance HOAS (FixR LamR) where
+    hoas_appl ab a = InR $ ApplR ab a
+    hoas_lam f = InR $ LamR f
