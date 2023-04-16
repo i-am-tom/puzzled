@@ -35,8 +35,12 @@ class SpecValVar v b where
 data CHOAS c r where
     CHOAS_Val :: (c a, Typeable a) => a -> CHOAS c a
     CHOAS_Appl :: (Typeable c, Typeable a, Typeable b) => CHOAS c (a -> b) -> CHOAS c a -> CHOAS c b
-    CHOAS_Lam :: (CHOAS c a -> CHOAS c b) -> CHOAS c (a -> b)
+    CHOAS_Lam :: (Typeable a, c a) => (CHOAS c a -> CHOAS c b) -> CHOAS c (a -> b)
 
+choasVal :: CHOAS c a -> a
+choasVal (CHOAS_Val x) = x
+choasVal (CHOAS_Appl ab a) = (choasVal ab) (choasVal a)
+choasVal (CHOAS_Lam f) = choasVal . f . CHOAS_Val
 
 class (c a, d a) => C_AND c d a
 instance (c a, d a) => C_AND c d a
