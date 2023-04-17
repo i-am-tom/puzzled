@@ -98,16 +98,33 @@ instance (EvalStep f (Fix h), EvalStep g (Fix h)) =>
     evalStepAlg r (Inr g) = evalStepAlg r g
 
 
-class HOAS rep where
-    hoas_appl :: rep (a -> b) -> rep a -> rep b
-    hoas_lam :: (rep a -> rep b) -> rep (a -> b)
 
+{-
 data LamR rep b where
     ApplR :: rep (a -> b) -> rep a -> LamR rep b
-    LamR :: (rep a -> rep c) -> LamR rep (a -> c) --TODO: still not made sure that variables are bound to their types!
+    LamR :: (rep a -> rep c) -> LamR rep (a -> c)
+-}
+
+{-
+Approach below is a nice idea, but does not really make sense. The Idea is that we get
+some knowldge from the terms in the recursive call to create e.g. a data type that
+knows its subparts make up a well-typed lambda term or something. However, the whole
+idea behind the DTC is that we know nothing about what came about in the recursive call.
+Typesafety or the like for terms should therefore be done separately, e.g. by folding 
+over the term and returning whether a property holds or not. This is, admittedly, a lot
+easier to do with dependent types than it is with Haskell. 
+
+
+data LamR rep r where
+    LamR :: (rep a -> rep b) -> LamR rep (a -> b)
 
 data FixR (f :: (Type -> Type) -> Type -> Type) b = InR (f (FixR f) b)
 
-instance HOAS (FixR LamR) where
-    hoas_appl ab a = InR $ ApplR ab a
-    hoas_lam f = InR $ LamR f
+instance (Functor (f (FixR f))) => Functor (FixR f) where
+    fmap f (InR l) = InR (fmap f l)
+
+type AlgebraR (f :: (Type -> Type) -> Type -> Type) a = forall g. f (FixR g) a -> a
+
+foldR :: AlgebraR f a -> (FixR f) a -> a 
+foldR alg (InR f) = alg f
+-}
