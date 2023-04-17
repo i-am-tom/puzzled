@@ -26,7 +26,11 @@ data HOAS_FNCDVarMonad arr c v r where
     ReturnFNCD :: a -> HOAS_FNCDVarMonad arr c v a
     BindFNCD :: 
         HOAS_FNCDVarMonad arr c v a -> 
-        (arr a (HOAS_FNCDVarMonad arr c v b)) -> 
+            --TODO: Here, the type itself should contain the possibility
+            --to be a lambda calculus function. Problem: In this case, we 
+            --loose the type safety when making this composable.
+            --possible solution: use some HOAS as arrow type
+        arr (a -> (HOAS_FNCDVarMonad arr c v b)) -> 
         HOAS_FNCDVarMonad arr c v b
 
 class SpecValVar v b where
