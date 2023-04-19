@@ -50,6 +50,7 @@ library
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
+    , mtl
     , show-combinators
   default-language: Haskell2010
 
@@ -84,6 +85,7 @@ executable StackProject-exe
   build-depends:
       StackProject
     , base >=4.7 && <5
+    , mtl
     , show-combinators
   default-language: Haskell2010
 
@@ -115,5 +117,6 @@ test-suite StackProject-test
   build-depends:
       StackProject
     , base >=4.7 && <5
+    , mtl
     , show-combinators
   default-language: Haskell2010
