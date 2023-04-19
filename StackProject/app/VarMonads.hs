@@ -44,6 +44,26 @@ data CHOAS c r where
     CHOAS_Appl :: (Typeable c, Typeable a, Typeable b) => CHOAS c (a -> b) -> CHOAS c a -> CHOAS c b
     CHOAS_Lam :: (Typeable a, c a) => (CHOAS c a -> CHOAS c b) -> CHOAS c (a -> b)
 
+infixl 1 <^>
+(<^>) :: (Typeable c, Typeable a, Typeable b) => CHOAS c (a -> b) -> CHOAS c a -> CHOAS c b
+(<^>) = CHOAS_Appl
+
+
+type Rectype a = a -> a
+
+y_op :: (Typeable c, Typeable a) => CHOAS c (Rectype a) -> CHOAS c a
+y_op rt = CHOAS_Appl rt (y_op rt)
+
+{-}
+just to show that the Y-operator works for some miraculous reason
+
+class (NOC a)
+instance (NOC a)
+
+choasTest :: Int
+choasTest = choasVal $ (((y_op $ CHOAS_Lam $ \f -> CHOAS_Lam $ \case {(choasVal -> []) -> CHOAS_Val 0; (choasVal -> (x : xs)) -> (CHOAS_Val (x +)) <^> (f <^> (CHOAS_Val xs))}) <^> (CHOAS_Val ([1,2,3] :: [Int]))) :: CHOAS NOC Int)
+-}
+
 choasVal :: CHOAS c a -> a
 choasVal (CHOAS_Var _) = error "cannot get value from variable placeholder"
 choasVal (CHOAS_Val x) = x
