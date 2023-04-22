@@ -75,10 +75,11 @@ instance (c a, d a) => C_AND c d a
 class (forall a. C_AND c d a) => CDeriv c d
 instance (forall a. C_AND c d a) => CDeriv c d
 
+
 nextIndex :: State Int Int
 nextIndex = state $ \x -> (x , x + 1)
 
-alphaEq :: (CDeriv c Eq) => (CHOAS c r) -> (CHOAS c r) -> State Int Bool
+alphaEq :: (CHOAS Eq r) -> (CHOAS Eq r) -> State Int Bool
 alphaEq (CHOAS_Var x) (CHOAS_Var y) = return $ x == y
 alphaEq (CHOAS_Val x) (CHOAS_Val y) = return $ x == y
 alphaEq (CHOAS_Appl ab a) (CHOAS_Appl ab' a') = 
@@ -93,5 +94,10 @@ alphaEq (CHOAS_Lam f) (CHOAS_Lam f') = do
     alphaEq (f (CHOAS_Var n)) (f' (CHOAS_Var n))
 alphaEq _ _ = return False
 
-instance (Typeable r, CDeriv c Eq) => Eq (CHOAS c r) where
+instance (Typeable r) => Eq (CHOAS Eq r) where
     x == y = evalState (alphaEq x y) 0
+
+y_op_eqTest :: Bool
+y_op_eqTest = c == c
+    where
+        (c :: CHOAS Eq Bool) = y_op (CHOAS_Lam $ \f -> f )
