@@ -119,7 +119,8 @@ instance (forall a. Eq (v a), Typeable v, Typeable r) => Eq (HOAS_FNCDVarMonad (
         typeOf m == typeOf m' &&
         (fromJust $ cast m) == m' &&
         (fromJust $ cast fm) == fm'
-
+{-}
 class CMonad c m where
     return :: (c a) => a -> m a
     (>>=) :: (c a) => m a -> (a -> m b) -> m b
+    -}
