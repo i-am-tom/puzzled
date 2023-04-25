@@ -24,9 +24,9 @@ data TCPointer c v a = forall b. (c b) => TPointer{
 data HOAS_FNCDVarMonad arr c v r where
     NewFNCD :: (c a) => a -> HOAS_FNCDVarMonad arr c v (v a)
     ReadFNCD :: v a -> HOAS_FNCDVarMonad arr c v a
-    WriteFNCD :: v a -> a -> HOAS_FNCDVarMonad arr c v ()
-    ReturnFNCD :: a -> HOAS_FNCDVarMonad arr c v a
-    BindFNCD :: 
+    WriteFNCD :: (Typeable a, c a) => v a -> a -> HOAS_FNCDVarMonad arr c v ()
+    ReturnFNCD :: (c a) => a -> HOAS_FNCDVarMonad arr c v a
+    BindFNCD :: (Typeable a) => 
         HOAS_FNCDVarMonad arr c v a -> 
             --TODO: Here, the type itself should contain the possibility
             --to be a lambda calculus function. Problem: In this case, we 
@@ -105,3 +105,21 @@ y_op_eqTest :: Bool
 y_op_eqTest = c == c
     where
         (c :: CHOAS Eq Bool) = CHOAS_YOP (CHOAS_Lam $ \f -> f )
+
+instance (forall a. Eq (v a), Typeable v, Typeable r) => Eq (HOAS_FNCDVarMonad (CHOAS Eq) Eq v r) where
+    (NewFNCD x) == (NewFNCD x') = x == x'
+    (ReadFNCD v) == (ReadFNCD v') = v == v'
+    (WriteFNCD v x) == (WriteFNCD v' x') = 
+        typeOf v == typeOf v' &&
+        (fromJust $ cast v) == v' &&
+        typeOf x == typeOf x' &&
+        (fromJust $ cast x) == x'
+    (ReturnFNCD x) == (ReturnFNCD x') = x == x'
+    (BindFNCD m fm) == (BindFNCD m' fm') = 
+        typeOf m == typeOf m' &&
+        (fromJust $ cast m) == m' &&
+        (fromJust $ cast fm) == fm'
+
+class CMonad c m where
+    return :: (c a) => a -> m a
+    (>>=) :: (c a) => m a -> (a -> m b) -> m b
