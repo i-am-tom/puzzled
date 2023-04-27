@@ -58,6 +58,7 @@ library
 executable StackProject-exe
   main-is: Main.hs
   other-modules:
+      ConstrainedMonad
       DTC
       Lambda
       Propagator
