@@ -15,6 +15,9 @@ module Control.Category.Hierarchy
     Closed (..),
     Hom,
 
+    Terminal (..),
+    Unit,
+
     -- * Utilities
     Trivial,
     type (&&)
@@ -99,6 +102,20 @@ class Cartesian k => Closed k where
   -- | Evidence that morphisms in this category are also objects in this
   -- category. See 'tensor' for a longer explanation of why this is necessary.
   hom :: (Object k x, Object k y) => (Object k (Hom x y) => r) -> r
+
+-------------------------------------------------------------------------------
+
+-- | A type-level representation of terminal objects within a category. See
+-- 'Tensor' and 'Hom' for more information as to why we don't use '()'.
+type Unit :: Type
+data Unit
+
+-- | Categories with a terminal object.
+type Terminal :: (Type -> Type -> Type) -> Constraint
+class Category k => Terminal k where
+
+  -- | An arrow to the terminal object.
+  kill :: Object k x => k x Unit
 
 -------------------------------------------------------------------------------
 
