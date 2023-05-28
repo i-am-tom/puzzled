@@ -6,17 +6,24 @@
 -- |
 -- A class hierarchy for various types of category.
 module Control.Category.Hierarchy
-  ( Category (..),
+  ( -- * Categories
+    Category (..),
 
+    -- * Cartesian Categories
     Cartesian (..),
     Tensor,
     swap,
 
+    -- * Cartesian Closed Categories
     Closed (..),
     Hom,
 
+    -- * Terminal Categories
     Terminal (..),
     Unit,
+
+    -- * Lifting into Categories
+    Const (..),
 
     -- * Utilities
     Trivial,
