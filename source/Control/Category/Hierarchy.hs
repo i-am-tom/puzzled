@@ -119,6 +119,15 @@ class Category k => Terminal k where
 
 -------------------------------------------------------------------------------
 
+-- | A class for mapping values from Hask into the given category.
+type Const :: (Type -> Type -> Type) -> Type -> Constraint
+class Terminal k => Const k x where
+
+  -- | Lift a value into the category as an arrow from 'Unit'.
+  const :: Object k x => x -> k Unit x
+
+-------------------------------------------------------------------------------
+
 -- | A trivial constraint satisfied by all types.
 type Trivial :: Type -> Constraint
 class Trivial x
