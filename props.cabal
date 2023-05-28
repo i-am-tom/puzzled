@@ -5,6 +5,7 @@ license: MIT
 
 library
   exposed-modules:
+    Control.Category.Product
     Control.Category.Hierarchy
   build-depends:
     , base
