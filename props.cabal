@@ -5,8 +5,9 @@ license: MIT
 
 library
   exposed-modules:
-    Control.Category.Product
     Control.Category.Hierarchy
+    Control.Category.Product
+    Control.Category.Propagate
   build-depends:
     , base
   default-language: GHC2021
