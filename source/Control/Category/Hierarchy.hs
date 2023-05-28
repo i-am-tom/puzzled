@@ -1,5 +1,4 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
@@ -10,7 +9,11 @@ module Control.Category.Hierarchy
   ( Category (..),
 
     Cartesian (..),
+    Tensor,
     swap,
+
+    Closed (..),
+    Hom,
 
     -- * Utilities
     Trivial,
@@ -18,6 +21,7 @@ module Control.Category.Hierarchy
   ) where
 
 import Data.Kind (Constraint, Type)
+import Prelude hiding (curry, id, uncurry)
 
 -- | We define categories in terms of their morphisms, and say that a category
 -- must have a defined identity morphism (mapping every element to itself) and
@@ -68,6 +72,33 @@ class (Category k) => Cartesian k where
 -- | Swap the components of a tensor.
 swap :: forall k x y. (Cartesian k, Object k x, Object k y) => k (Tensor x y) (Tensor y x)
 swap = tensor @k @x @y (exr &&& exl)
+
+-------------------------------------------------------------------------------
+
+-- | A type-level representation of homsets within a category. Again, we
+-- deliberately don't reuse something like (->) so we can differentate between
+-- homs and, for example, objects-that-happen-to-be-functions.
+type Hom :: Type -> Type -> Type
+data Hom x y
+
+-- | Categories with a notion of homomorphisms.
+type Closed :: (Type -> Type -> Type) -> Constraint
+class Cartesian k => Closed k where
+
+  -- | An arrow from a homomorphism and a value in its domain to a value in its
+  -- codomain. In more intuitive terms, this is function application.
+  apply :: forall x y. (Object k x, Object k y) => k (Tensor (Hom x y) x) y
+  apply = hom @k @x @y (uncurry id)
+
+  -- | Currying of our arrows.
+  curry :: (Object k x, Object k y, Object k z) => k (Tensor x y) z -> k x (Hom y z)
+
+  -- | Uncurrying of our arrows.
+  uncurry :: (Object k x, Object k y, Object k z) => k x (Hom y z) -> k (Tensor x y) z
+
+  -- | Evidence that morphisms in this category are also objects in this
+  -- category. See 'tensor' for a longer explanation of why this is necessary.
+  hom :: (Object k x, Object k y) => (Object k (Hom x y) => r) -> r
 
 -------------------------------------------------------------------------------
 
