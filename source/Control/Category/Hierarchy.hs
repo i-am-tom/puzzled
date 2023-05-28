@@ -31,10 +31,10 @@ class Category k where
   type Object k = Trivial
 
   -- | The identity morphism.
-  id :: Object k x => k x x
+  id :: forall x. Object k x => k x x
 
   -- | Composition of morphisms.
-  (.) :: (Object k x, Object k y, Object k z) => k y z -> k x y -> k x z
+  (.) :: forall x y z. (Object k x, Object k y, Object k z) => k y z -> k x y -> k x z
 
 -------------------------------------------------------------------------------
 
@@ -49,17 +49,21 @@ type Cartesian :: (Type -> Type -> Type) -> Constraint
 class (Category k) => Cartesian k where
 
   --  Tensor introduction.
-  (&&&) :: (Object k x, Object k y, Object k z) => k x y -> k x z -> k x (Tensor y z)
+  (&&&) :: forall x y z. (Object k x, Object k y, Object k z) => k x y -> k x z -> k x (Tensor y z)
 
   -- | Left tensor eliminator.
-  exl :: (Object k x, Object k y) => k (Tensor x y) x
+  exl :: forall x y. (Object k x, Object k y) => k (Tensor x y) x
 
   -- | Right tensor eliminator.
-  exr :: (Object k x, Object k y) => k (Tensor x y) y
+  exr :: forall x y. (Object k x, Object k y) => k (Tensor x y) y
 
   -- | Evidence that a tensor of objects in this category is also an object in
-  -- this category.
-  tensor :: (Object k x, Object k y) => (Object k (Tensor x y) => r) -> r
+  -- this category. It would be nice to express this as a quantified
+  -- constraint, but because 'Object' is a type family, it can't be used in an
+  -- instance head. We could also add it as a parameter on all the 'Category'
+  -- type classes with a functional dependency, but that's a lot more visually
+  -- noisy.
+  tensor :: forall x y r. (Object k x, Object k y) => (Object k (Tensor x y) => r) -> r
 
 -- | Swap the components of a tensor.
 swap :: forall k x y. (Cartesian k, Object k x, Object k y) => k (Tensor x y) (Tensor y x)
