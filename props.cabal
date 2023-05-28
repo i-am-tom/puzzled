@@ -8,6 +8,7 @@ library
     Control.Category.Hierarchy
     Control.Category.Product
     Control.Category.Propagate
+    Control.Category.Reify
   build-depends:
     , base
   default-language: GHC2021
