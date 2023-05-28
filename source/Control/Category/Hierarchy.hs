@@ -71,17 +71,9 @@ class (Category k) => Cartesian k where
   -- | Right tensor eliminator.
   exr :: forall x y. (Object k x, Object k y) => k (Tensor x y) y
 
-  -- | Evidence that a tensor of objects in this category is also an object in
-  -- this category. It would be nice to express this as a quantified
-  -- constraint, but because 'Object' is a type family, it can't be used in an
-  -- instance head. We could also add it as a parameter on all the 'Category'
-  -- type classes with a functional dependency, but that's a lot more visually
-  -- noisy.
-  tensor :: forall x y r. (Object k x, Object k y) => (Object k (Tensor x y) => r) -> r
-
 -- | Swap the components of a tensor.
-swap :: forall k x y. (Cartesian k, Object k x, Object k y) => k (Tensor x y) (Tensor y x)
-swap = tensor @k @x @y (exr &&& exl)
+swap :: (Cartesian k, Object k x, Object k y, Object k (Tensor x y)) => k (Tensor x y) (Tensor y x)
+swap = exr &&& exl
 
 -------------------------------------------------------------------------------
 
@@ -97,18 +89,14 @@ class Cartesian k => Closed k where
 
   -- | An arrow from a homomorphism and a value in its domain to a value in its
   -- codomain. In more intuitive terms, this is function application.
-  apply :: forall x y. (Object k x, Object k y) => k (Tensor (Hom x y) x) y
-  apply = hom @k @x @y (uncurry id)
+  apply :: forall x y. (Object k x, Object k y, Object k (Hom x y)) => k (Tensor (Hom x y) x) y
+  apply = uncurry id
 
   -- | Currying of our arrows.
   curry :: (Object k x, Object k y, Object k z) => k (Tensor x y) z -> k x (Hom y z)
 
   -- | Uncurrying of our arrows.
   uncurry :: (Object k x, Object k y, Object k z) => k x (Hom y z) -> k (Tensor x y) z
-
-  -- | Evidence that morphisms in this category are also objects in this
-  -- category. See 'tensor' for a longer explanation of why this is necessary.
-  hom :: (Object k x, Object k y) => (Object k (Hom x y) => r) -> r
 
 -------------------------------------------------------------------------------
 
