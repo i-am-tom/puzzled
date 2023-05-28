@@ -7,19 +7,20 @@ module Control.Category.Product where
 
 import Control.Category.Hierarchy
 import Data.Kind (Type)
-import Prelude hiding ((.), curry, id, uncurry)
+import Prelude hiding (curry, id, uncurry, (.))
 
 -- | A product of two categories is made up of two arrows for different
 -- categories with common domain and codomain types. Rather than interpreting a
 -- program twice, this allows us to produce two interpretations of the same
 -- program simultaneously.
 type Product :: (Type -> Type -> Type) -> (Type -> Type -> Type) -> Type -> Type -> Type
-newtype Product f g x y = Product_ { tuple :: (f x y, g x y) }
+newtype Product f g x y = Product_ {tuple :: (f x y, g x y)}
   deriving stock (Eq, Ord, Show)
 
 -- | Syntactic sugar over the tuple within 'Product'.
 pattern Product :: f x y -> g x y -> Product f g x y
-pattern Product x y = Product_ { tuple = (x, y) }
+pattern Product x y = Product_ {tuple = (x, y)}
+
 {-# COMPLETE Product #-}
 
 instance (Category f, Category g) => Category (Product f g) where

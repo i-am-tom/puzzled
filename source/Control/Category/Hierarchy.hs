@@ -27,28 +27,36 @@ module Control.Category.Hierarchy
 
     -- * Utilities
     Trivial,
-    type (&&)
-  ) where
+    type (&&),
+  )
+where
 
 import Data.Kind (Constraint, Type)
 import Prelude hiding (curry, id, uncurry)
+import Prelude qualified
 
 -- | We define categories in terms of their morphisms, and say that a category
 -- must have a defined identity morphism (mapping every element to itself) and
 -- associative composition of morphisms.
 type Category :: (Type -> Type -> Type) -> Constraint
 class Category k where
-
   -- | The class of objects allowed within this category. By default, objects
   -- in the category are totally unconstrained.
   type Object k :: Type -> Constraint
+
   type Object k = Trivial
 
   -- | The identity morphism.
-  id :: forall x. Object k x => k x x
+  id :: forall x. (Object k x) => k x x
 
   -- | Composition of morphisms.
   (.) :: forall x y z. (Object k x, Object k y, Object k z) => k y z -> k x y -> k x z
+
+instance Category (->) where
+  type Object (->) = Trivial
+
+  id = Prelude.id
+  (.) = (Prelude..)
 
 -------------------------------------------------------------------------------
 
@@ -61,7 +69,6 @@ data Tensor x y
 -- | Categories with a notion of products (tensors).
 type Cartesian :: (Type -> Type -> Type) -> Constraint
 class (Category k) => Cartesian k where
-
   --  Tensor introduction.
   (&&&) :: forall x y z. (Object k x, Object k y, Object k z) => k x y -> k x z -> k x (Tensor y z)
 
@@ -85,8 +92,7 @@ data Hom x y
 
 -- | Categories with a notion of homomorphisms.
 type Closed :: (Type -> Type -> Type) -> Constraint
-class Cartesian k => Closed k where
-
+class (Cartesian k) => Closed k where
   -- | An arrow from a homomorphism and a value in its domain to a value in its
   -- codomain. In more intuitive terms, this is function application.
   apply :: forall x y. (Object k x, Object k y, Object k (Hom x y)) => k (Tensor (Hom x y) x) y
@@ -107,28 +113,30 @@ data Unit
 
 -- | Categories with a terminal object.
 type Terminal :: (Type -> Type -> Type) -> Constraint
-class Category k => Terminal k where
-
+class (Category k) => Terminal k where
   -- | An arrow to the terminal object.
-  kill :: Object k x => k x Unit
+  kill :: (Object k x) => k x Unit
 
 -------------------------------------------------------------------------------
 
 -- | A class for mapping values from Hask into the given category.
 type Const :: (Type -> Type -> Type) -> Type -> Constraint
-class Terminal k => Const k x where
-
+class (Terminal k) => Const k x where
   -- | Lift a value into the category as an arrow from 'Unit'.
-  const :: Object k x => x -> k Unit x
+  const :: (Object k x) => x -> k Unit x
 
 -------------------------------------------------------------------------------
 
 -- | A trivial constraint satisfied by all types.
 type Trivial :: Type -> Constraint
 class Trivial x
+
 instance Trivial x
 
 -- | Products of constraints.
 type (&&) :: (Type -> Constraint) -> (Type -> Constraint) -> Type -> Constraint
 class (c x, d x) => (c && d) x
+
 instance (c x, d x) => (c && d) x
+
+--
