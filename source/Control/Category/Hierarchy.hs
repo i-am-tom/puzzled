@@ -58,7 +58,7 @@ instance Category (->) where
   id = Base.id
   (.) = (Base..)
 
-instance Monad m => Category (Kleisli m) where
+instance (Monad m) => Category (Kleisli m) where
   id = Base.id
   (.) = (Base..)
 
@@ -142,5 +142,3 @@ type (&&) :: (Type -> Constraint) -> (Type -> Constraint) -> Type -> Constraint
 class (c x, d x) => (c && d) x
 
 instance (c x, d x) => (c && d) x
-
---

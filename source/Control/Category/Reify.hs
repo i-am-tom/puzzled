@@ -87,7 +87,7 @@ instance (forall e. (c e) => Show (Ghost e)) => Show (Reify c x y) where
   showsPrec _ Unify = showString "Unify"
 
 instance Category (Reify c) where
-  type Object (Reify c) = Typeable && c
+  type Object (Reify c) = Typeable
 
   (.) = Compose
   id = Identity

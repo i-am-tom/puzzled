@@ -29,10 +29,12 @@ test-suite puzzled-tests
     , base
     , containers
     , hedgehog
+    , hspec
     , primitive
     , puzzled
     , tasty
     , tasty-hedgehog
+    , tasty-hspec
   build-tool-depends:
     tasty-discover:tasty-discover
   other-modules:
