@@ -9,8 +9,28 @@ library
     Control.Category.Product
     Control.Category.Propagate
     Control.Category.Reify
+    Data.Monoid.JoinSemilattice
   build-depends:
     , base
+    , containers
   default-language: GHC2021
   ghc-options: -Wall -Wextra
   hs-source-dirs: source
+
+test-suite puzzled-tests
+  default-language: GHC2021
+  type: exitcode-stdio-1.0
+  ghc-options: -Wall -Wextra
+  hs-source-dirs: tests
+  main-is: Driver.hs
+  build-depends:
+    , base
+    , containers
+    , hedgehog
+    , puzzled
+    , tasty
+    , tasty-hedgehog
+  build-tool-depends:
+    tasty-discover:tasty-discover
+  other-modules:
+    Data.Monoid.JoinSemilatticeTest
