@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
@@ -31,9 +32,10 @@ module Control.Category.Hierarchy
   )
 where
 
+import Control.Arrow (Kleisli)
+import Control.Category qualified as Base
 import Data.Kind (Constraint, Type)
 import Prelude hiding (curry, id, uncurry)
-import Prelude qualified
 
 -- | We define categories in terms of their morphisms, and say that a category
 -- must have a defined identity morphism (mapping every element to itself) and
@@ -53,10 +55,12 @@ class Category k where
   (.) :: forall x y z. (Object k x, Object k y, Object k z) => k y z -> k x y -> k x z
 
 instance Category (->) where
-  type Object (->) = Trivial
+  id = Base.id
+  (.) = (Base..)
 
-  id = Prelude.id
-  (.) = (Prelude..)
+instance Monad m => Category (Kleisli m) where
+  id = Base.id
+  (.) = (Base..)
 
 -------------------------------------------------------------------------------
 
@@ -64,7 +68,7 @@ instance Category (->) where
 -- don't reuse something like (,) so we can differentiate between tensors and,
 -- for example, objects-that-happen-to-be-tuples.
 type Tensor :: Type -> Type -> Type
-data Tensor x y
+data Tensor x y deriving stock (Eq, Ord, Show)
 
 -- | Categories with a notion of products (tensors).
 type Cartesian :: (Type -> Type -> Type) -> Constraint
@@ -88,7 +92,7 @@ swap = exr &&& exl
 -- deliberately don't reuse something like (->) so we can differentate between
 -- homs and, for example, objects-that-happen-to-be-functions.
 type Hom :: Type -> Type -> Type
-data Hom x y
+data Hom x y deriving stock (Eq, Ord, Show)
 
 -- | Categories with a notion of homomorphisms.
 type Closed :: (Type -> Type -> Type) -> Constraint
@@ -109,7 +113,7 @@ class (Cartesian k) => Closed k where
 -- | A type-level representation of terminal objects within a category. See
 -- 'Tensor' and 'Hom' for more information as to why we don't use '()'.
 type Unit :: Type
-data Unit
+data Unit deriving stock (Eq, Ord, Show)
 
 -- | Categories with a terminal object.
 type Terminal :: (Type -> Type -> Type) -> Constraint

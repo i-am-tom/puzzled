@@ -10,9 +10,11 @@ library
     Control.Category.Propagate
     Control.Category.Reify
     Data.Monoid.JoinSemilattice
+    Propagator.Execute
   build-depends:
     , base
     , containers
+    , primitive
   default-language: GHC2021
   ghc-options: -Wall -Wextra
   hs-source-dirs: source
@@ -27,6 +29,7 @@ test-suite puzzled-tests
     , base
     , containers
     , hedgehog
+    , primitive
     , puzzled
     , tasty
     , tasty-hedgehog
@@ -34,3 +37,4 @@ test-suite puzzled-tests
     tasty-discover:tasty-discover
   other-modules:
     Data.Monoid.JoinSemilatticeTest
+    Propagator.ExecuteTest

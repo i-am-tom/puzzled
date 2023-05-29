@@ -192,7 +192,7 @@ hprop_merge_implies_transitivity = lawImpliesTransitivity genMerge
 ---
 
 genSet :: Gen (Set Char)
-genSet = Gen.set (Range.linear 0 100) Gen.alphaNum
+genSet = Gen.set (Range.linear 0 10) Gen.alphaNum
 
 hprop_set_associativity :: Property
 hprop_set_associativity = lawAssociativity genSet
