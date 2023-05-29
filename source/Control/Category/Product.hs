@@ -9,8 +9,9 @@ module Control.Category.Product
 where
 
 import Control.Category.Hierarchy
+import Control.Category.Propagate (Propagate (unify))
 import Data.Kind (Type)
-import Prelude hiding (curry, id, uncurry, (.))
+import Prelude hiding (const, curry, id, uncurry, (.))
 
 -- | A product of two categories is made up of two arrows for different
 -- categories with common domain and codomain types. Rather than interpreting a
@@ -44,3 +45,12 @@ instance (Cartesian f, Cartesian g) => Cartesian (Product f g) where
 instance (Closed f, Closed g) => Closed (Product f g) where
   curry (Product f g) = Product (curry f) (curry g)
   uncurry (Product f g) = Product (uncurry f) (uncurry g)
+
+instance (Terminal f, Terminal g) => Terminal (Product f g) where
+  kill = Product kill kill
+
+instance (Const f x, Const g x) => Const (Product f g) x where
+  const x = Product (const x) (const x)
+
+instance (Propagate f, Propagate g) => Propagate (Product f g) where
+  unify = Product unify unify
