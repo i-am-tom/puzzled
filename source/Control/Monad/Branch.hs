@@ -24,6 +24,4 @@ newtype BranchT m x = BranchT { unBranchT :: LogicT m x }
 
 instance PrimMonad m => PrimMonad (BranchT m) where
   type PrimState (BranchT m) = PrimState m
-
-  -- TODO: can we implement rollback here?
   primitive = BranchT . lift . primitive
