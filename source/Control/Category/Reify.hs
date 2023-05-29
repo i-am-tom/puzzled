@@ -10,11 +10,11 @@
 module Control.Category.Reify where
 
 import Control.Category.Hierarchy
-import Control.Category.Propagate (Propagate (unify))
+import Control.Category.Propagate (Propagate (choice, unify))
 import Data.Kind (Constraint, Type)
 import GHC.Show (showSpace)
-import Type.Reflection (Typeable, eqTypeRep, typeRep, (:~~:) (HRefl))
 import Prelude hiding ((.))
+import Type.Reflection (Typeable, eqTypeRep, typeRep, (:~~:) (HRefl))
 
 -- | A category that implements the hierarchy by reifying all functions as
 -- constructors in this GADT. This is useful because we can use it to observe
@@ -36,6 +36,7 @@ data Reify c x y where
   -- Constant
   Const :: (c x) => x -> Reify c Unit x
   -- Propagate
+  Choice :: Reify c (Tensor x x) x
   Unify :: Reify c (Tensor x x) x
 
 instance (forall e. (c e) => Eq (Ghost e)) => Eq (Reify c x y) where
@@ -51,6 +52,7 @@ instance (forall e. (c e) => Eq (Ghost e)) => Eq (Reify c x y) where
   Uncurry x == Uncurry y = x == y
   Kill == Kill = True
   Const x == Const y = Ghost x == Ghost y
+  Choice == Choice = True
   Unify == Unify = True
   _ == _ = False
 
@@ -84,6 +86,7 @@ instance (forall e. (c e) => Show (Ghost e)) => Show (Reify c x y) where
     showParen (p >= 11) $
       showString "Const "
         . showsPrec 11 (Ghost x)
+  showsPrec _ Choice = showString "Choice"
   showsPrec _ Unify = showString "Unify"
 
 instance Category (Reify c) where
@@ -108,6 +111,7 @@ instance (c x) => Const (Reify c) x where
   const = Const
 
 instance Propagate (Reify c) where
+  choice = Choice
   unify = Unify
 
 ---

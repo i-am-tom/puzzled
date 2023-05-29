@@ -6,15 +6,15 @@
 
 module Propagator.Execute where
 
-import Control.Applicative (liftA2)
+import Control.Applicative (Alternative ((<|>), empty), liftA2)
 import Control.Arrow (Kleisli (Kleisli))
 import Control.Category.Hierarchy
 import Control.Category.Propagate (Propagate (..))
-import Control.Monad (join)
+import Control.Monad (MonadPlus, join)
 import Control.Monad.Primitive (PrimMonad (PrimState))
 import Data.Kind (Type)
 import Data.Monoid.JoinSemilattice (JoinSemilattice (..), Merge (..))
-import Data.Primitive.MutVar (MutVar, atomicModifyMutVar', newMutVar, readMutVar)
+import Data.Primitive.MutVar (MutVar, atomicModifyMutVar', newMutVar, readMutVar, writeMutVar)
 import Prelude hiding (id, (.))
 
 -- | "Regular" (non-tensor, non-terminal, non-hom) values within our network
@@ -55,7 +55,7 @@ morphism f = \case
 -- | A category in which propagator computations can be executed over mutable
 -- variables. We 'unify' via the 'JoinSemilattice' instance of the values.
 type Execute :: (Type -> Type) -> Type -> Type -> Type
-newtype Execute m i o = Execute_ {execute :: Kleisli m (Cell m i) (Cell m o)}
+newtype Execute m i o = Execute_ {execute :: Kleisli (m) (Cell m i) (Cell m o)}
 
 {-# COMPLETE Execute #-}
 
@@ -86,7 +86,8 @@ instance (Monad m) => Terminal (Execute m) where
 instance (PrimMonad m, JoinSemilattice x) => Const (Execute m) x where
   const x = Execute \_ -> fmap (Object . Value) (newMutVar (x, pure ()))
 
-instance (MonadFail m, PrimMonad m) => Propagate (Execute m) where
+instance (MonadFail m, MonadPlus m, PrimMonad m) => Propagate (Execute m) where
+  choice = Execute $ tensor \x y -> pure x <|> pure y
   unify = Execute $ tensor \x y -> x <$ recurse x y
     where
       recurse :: Cell m x -> Cell m x -> m ()
@@ -99,9 +100,12 @@ instance (MonadFail m, PrimMonad m) => Propagate (Execute m) where
         let p :: m ()
             p =
               readMutVar xs >>= \(x, _) -> join do
-                atomicModifyMutVar' ys \(y, ps) ->
+                atomicModifyMutVar' ys \(y, ps) -> do
+                  let rollback :: m void
+                      rollback = writeMutVar ys (y, ps) *> empty
+
                   case x <~ y of
-                    Changed z -> ((z, ps), ps)
+                    Changed z -> ((z, ps), ps <|> rollback)
                     Unchanged _ -> ((x, ps), pure ())
 
         atomicModifyMutVar' xs \(x, ps) -> ((x, p *> ps), p)

@@ -9,12 +9,15 @@ library
     Control.Category.Product
     Control.Category.Propagate
     Control.Category.Reify
+    Control.Monad.Branch
     Data.Monoid.JoinSemilattice
     Propagator.Execute
   build-depends:
     , base
     , containers
+    , logict
     , primitive
+    , transformers
   default-language: GHC2021
   ghc-options: -Wall -Wextra
   hs-source-dirs: source
@@ -30,6 +33,7 @@ test-suite puzzled-tests
     , containers
     , hedgehog
     , hspec
+    , logict
     , primitive
     , puzzled
     , tasty

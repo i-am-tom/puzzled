@@ -1,2 +1,3 @@
 - ignore: {name: "Avoid lambda"}
 - ignore: {name: "Redundant id"}
+- ignore: {name: "Use const"}

@@ -9,7 +9,7 @@ module Control.Category.Product
 where
 
 import Control.Category.Hierarchy
-import Control.Category.Propagate (Propagate (unify))
+import Control.Category.Propagate (Propagate (choice, unify))
 import Data.Kind (Type)
 import Prelude hiding (const, curry, id, uncurry, (.))
 
@@ -53,4 +53,5 @@ instance (Const f x, Const g x) => Const (Product f g) x where
   const x = Product (const x) (const x)
 
 instance (Propagate f, Propagate g) => Propagate (Product f g) where
+  choice = Product choice choice
   unify = Product unify unify

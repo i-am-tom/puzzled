@@ -6,56 +6,74 @@
 
 module Propagator.ExecuteTest where
 
+import Control.Applicative (Alternative (empty))
 import Control.Arrow (runKleisli)
 import Control.Category.Hierarchy
-import Control.Category.Propagate (Propagate (unify))
+import Control.Category.Propagate (Propagate (choice, unify))
 import Control.Category.Reify (Reify (..))
+import Control.Monad (MonadPlus)
+import Control.Monad.Branch (BranchT (unBranchT))
+import Control.Monad.Logic (observeAllT)
 import Control.Monad.Primitive (PrimMonad)
 import Data.Functor ((<&>))
 import Data.Kind (Constraint, Type)
 import Data.Monoid.JoinSemilattice (JoinSemilattice)
-import Data.Primitive.MutVar (newMutVar, readMutVar)
+import Data.Primitive.MutVar (newMutVar)
 import Data.Set (Set)
 import Hedgehog
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
+import Prelude hiding (const, curry, id, uncurry, (.))
 import Propagator.Execute
 import Test.Hspec (Spec, it, shouldBe)
-import Prelude hiding (const, curry, id, uncurry, (.))
+
+type Tester :: Type -> Type
+type Tester = Execute (BranchT IO) Unit
 
 spec_execute :: Spec
 spec_execute = do
   it "x = 5; x = ?" do
-    let go :: Execute IO Unit (Set Char)
+    let go :: Tester (Set Char)
         go = const ['a']
 
-    runKleisli (execute go) Terminal >>= \(Object ref) ->
-      with ref \x -> x `shouldBe` ['a']
+    run_ go >>= \output -> output `shouldBe` [['a']]
 
   it "x = 5; x = y; y = ?" do
-    let go :: Execute IO Unit (Set Char)
+    let go :: Tester (Set Char)
         go = exr . (unify &&& exr) . (const ['a'] &&& const mempty)
     -- \^ exr . (unify &&& exr) means we explicitly check the unknown
     -- variable.
 
-    runKleisli (execute go) Terminal >>= \(Object ref) ->
-      with ref \x -> x `shouldBe` ['a']
+    run_ go >>= \output -> output `shouldBe` [['a']]
 
   it "x = 5; x = y; y = z; z = ?" do
-    let go :: Execute IO Unit (Set Char)
+    let go :: Tester (Set Char)
         go = unify . ((unify . exl) &&& exr) . (const ['a'] &&& const mempty &&& const mempty)
     -- \^ Assuming the above test worked, we don't do the same dance as
     -- above.
 
-    runKleisli (execute go) Terminal >>= \(Object ref) ->
-      with ref \x -> x `shouldBe` ['a']
+    run_ go >>= \output -> output `shouldBe` [['a']]
 
   it "{ 1 } ⊂ x; { 2 } ⊂ y; { 3 } ⊂ z; x = y; y = z; x = ?" do
-    let go :: Execute IO Unit (Set Int)
+    let go :: Tester (Set Int)
         go = unify . ((unify . exl) &&& exr) . (const [1] &&& const [2] &&& const [3])
 
-    runKleisli (execute go) Terminal >>= \(Object ref) ->
-      with ref \x -> x `shouldBe` [1, 2, 3]
+    run_ go >>= \output -> output `shouldBe` [[1, 2, 3]]
+
+  it "x ⊂ { 1, 2 }; x = y; y = ?" do
+    let go :: Tester (Set Int)
+        go = choice . (const [1] &&& const [2])
+
+    run_ go >>= \output -> output `shouldBe` [[1], [2]]
+
+run :: PrimMonad m => Execute (BranchT m) i o -> Cell (BranchT m) i -> m [o]
+run xs initial = observeAllT $ unBranchT do
+  runKleisli (execute xs) initial >>= \case
+    Object ref -> with ref pure
+    _ -> empty
+
+run_ :: PrimMonad m => Execute (BranchT m) Unit o -> m [o]
+run_ xs = run xs Terminal
 
 ---
 
@@ -75,17 +93,14 @@ type Testable = JoinSemilattice && Eq && Show
 fs =~= gs = do
   x <- forAll genSet
 
-  let Execute f = interpret fs
-      Execute g = interpret gs
-
-  this <- newMutVar (x, pure ()) >>= f . Object . Value >>= \(Object y) -> fst <$> readMutVar (ref y)
-  that <- newMutVar (x, pure ()) >>= g . Object . Value >>= \(Object y) -> fst <$> readMutVar (ref y)
+  this <- newMutVar (x, pure ()) >>= run (interpret fs) . Object . Value
+  that <- newMutVar (x, pure ()) >>= run (interpret gs) . Object . Value
 
   this === that
 
 infix 5 =~=
 
-interpret :: (MonadFail m, PrimMonad m) => Reify Testable i o -> Execute m i o
+interpret :: (MonadFail m, MonadPlus m, PrimMonad m) => Reify Testable i o -> Execute m i o
 interpret = \case
   Compose f g -> interpret f . interpret g
   Identity -> id
@@ -96,6 +111,7 @@ interpret = \case
   Uncurry f -> uncurry (interpret f)
   Kill -> kill
   Const x -> const x
+  Choice -> choice
   Unify -> unify
 
 genProgram :: Gen (Reify Testable (Set Char) (Set Char))
