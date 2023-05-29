@@ -3,7 +3,10 @@
 {-# LANGUAGE TypeFamilies #-}
 
 -- | Products of categories.
-module Control.Category.Product where
+module Control.Category.Product
+  ( Product (Product),
+  )
+where
 
 import Control.Category.Hierarchy
 import Data.Kind (Type)
@@ -17,11 +20,11 @@ type Product :: (Type -> Type -> Type) -> (Type -> Type -> Type) -> Type -> Type
 newtype Product f g x y = Product_ {tuple :: (f x y, g x y)}
   deriving stock (Eq, Ord, Show)
 
+{-# COMPLETE Product #-}
+
 -- | Syntactic sugar over the tuple within 'Product'.
 pattern Product :: f x y -> g x y -> Product f g x y
 pattern Product x y = Product_ {tuple = (x, y)}
-
-{-# COMPLETE Product #-}
 
 instance (Category f, Category g) => Category (Product f g) where
   type Object (Product f g) = Object f && Object g
