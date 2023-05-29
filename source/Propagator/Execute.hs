@@ -6,7 +6,7 @@
 
 module Propagator.Execute where
 
-import Control.Applicative (Alternative ((<|>), empty), liftA2)
+import Control.Applicative (Alternative (empty, (<|>)), liftA2)
 import Control.Arrow (Kleisli (Kleisli))
 import Control.Category.Hierarchy
 import Control.Category.Propagate (Propagate (..))
@@ -55,7 +55,7 @@ morphism f = \case
 -- | A category in which propagator computations can be executed over mutable
 -- variables. We 'unify' via the 'JoinSemilattice' instance of the values.
 type Execute :: (Type -> Type) -> Type -> Type -> Type
-newtype Execute m i o = Execute_ {execute :: Kleisli (m) (Cell m i) (Cell m o)}
+newtype Execute m i o = Execute_ {execute :: Kleisli m (Cell m i) (Cell m o)}
 
 {-# COMPLETE Execute #-}
 

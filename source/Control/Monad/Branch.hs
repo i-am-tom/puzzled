@@ -5,8 +5,9 @@
 -- |
 -- A backtracking monad for primitive operations.
 module Control.Monad.Branch
-  ( BranchT (..)
-  ) where
+  ( BranchT (..),
+  )
+where
 
 import Control.Applicative (Alternative)
 import Control.Monad (MonadPlus)
@@ -18,10 +19,10 @@ import Data.Kind (Type)
 -- | A wrapper around 'LogicT' that implements 'PrimMonad'. All we're doing is
 -- avoiding an orphan instance.
 type BranchT :: (Type -> Type) -> Type -> Type
-newtype BranchT m x = BranchT { unBranchT :: LogicT m x }
+newtype BranchT m x = BranchT {unBranchT :: LogicT m x}
   deriving newtype (Functor, Applicative, Monad, MonadFail)
   deriving newtype (Alternative, MonadPlus)
 
-instance PrimMonad m => PrimMonad (BranchT m) where
+instance (PrimMonad m) => PrimMonad (BranchT m) where
   type PrimState (BranchT m) = PrimState m
   primitive = BranchT . lift . primitive

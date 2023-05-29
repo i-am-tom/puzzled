@@ -23,9 +23,9 @@ import Data.Set (Set)
 import Hedgehog
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
-import Prelude hiding (const, curry, id, uncurry, (.))
 import Propagator.Execute
 import Test.Hspec (Spec, it, shouldBe)
+import Prelude hiding (const, curry, id, uncurry, (.))
 
 type Tester :: Type -> Type
 type Tester = Execute (BranchT IO) Unit
@@ -66,13 +66,13 @@ spec_execute = do
 
     run_ go >>= \output -> output `shouldBe` [[1], [2]]
 
-run :: PrimMonad m => Execute (BranchT m) i o -> Cell (BranchT m) i -> m [o]
+run :: (PrimMonad m) => Execute (BranchT m) i o -> Cell (BranchT m) i -> m [o]
 run xs initial = observeAllT $ unBranchT do
   runKleisli (execute xs) initial >>= \case
     Object ref -> with ref pure
     _ -> empty
 
-run_ :: PrimMonad m => Execute (BranchT m) Unit o -> m [o]
+run_ :: (PrimMonad m) => Execute (BranchT m) Unit o -> m [o]
 run_ xs = run xs Terminal
 
 ---

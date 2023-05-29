@@ -13,8 +13,8 @@ import Control.Category.Hierarchy
 import Control.Category.Propagate (Propagate (choice, unify))
 import Data.Kind (Constraint, Type)
 import GHC.Show (showSpace)
-import Prelude hiding ((.))
 import Type.Reflection (Typeable, eqTypeRep, typeRep, (:~~:) (HRefl))
+import Prelude hiding ((.))
 
 -- | A category that implements the hierarchy by reifying all functions as
 -- constructors in this GADT. This is useful because we can use it to observe
