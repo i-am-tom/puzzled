@@ -147,9 +147,9 @@ instance (PrimMonad m, JoinSemilattice x) => Const (Execute m) x where
 
 instance (MonadFail m, MonadPlus m, PrimMonad m) => Propagate (Execute m) where
   choice = Execute (tensor \x y -> pure x <|> pure y)
-  unify = Execute (tensor \x y -> x <$ recurse x y)
+  unify = Execute (tensor \x y -> x <$ go x y)
     where
-      recurse :: Cell m x -> Cell m x -> m ()
-      recurse (Tensor x y) (Tensor z w) = recurse x z *> recurse y w
-      recurse (Object one) (Object two) = watch one (write two) *> watch two (write one)
-      recurse _ _ = fail "TODO: unify morphisms?"
+      go :: Cell m x -> Cell m x -> m ()
+      go (Tensor x y) (Tensor z w) = go x z *> go y w
+      go (Object one) (Object two) = watch one (write two) *> watch two (write one)
+      go _ _ = fail "TODO: unify morphisms?"
