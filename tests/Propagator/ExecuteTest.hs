@@ -63,9 +63,11 @@ spec_execute = do
     run go >>= \output -> output `shouldBe` [[1], [2]]
 
 run :: (PrimMonad m) => Execute (BranchT m) Unit o -> m [o]
-run (Execute xs) = all $ xs Terminal >>= \case
-    Object ref -> unsafeRead ref
-    _ -> empty
+run (Execute xs) =
+  all $
+    xs Terminal >>= \case
+      Object ref -> unsafeRead ref
+      _ -> empty
 
 ---
 
