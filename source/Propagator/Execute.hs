@@ -6,22 +6,23 @@
 
 module Propagator.Execute where
 
-import Control.Applicative (Alternative (empty, (<|>)), liftA2)
+import Control.Applicative (Alternative ((<|>)), liftA2)
 import Control.Arrow (Kleisli (Kleisli))
 import Control.Category.Hierarchy
 import Control.Category.Propagate (Propagate (..))
 import Control.Monad (MonadPlus, join)
-import Control.Monad.Primitive (PrimMonad (PrimState))
+import Control.Monad.Primitive (PrimMonad)
 import Data.Kind (Type)
 import Data.Monoid.JoinSemilattice (JoinSemilattice (..), Merge (..))
-import Data.Primitive.MutVar (MutVar, atomicModifyMutVar', newMutVar, readMutVar, writeMutVar)
+import Data.Primitive.MutVar (newMutVar, readMutVar)
+import Data.Primitive.MutVar.Rollback (Ref, atomicModifyMutVar)
 import Prelude hiding (id, (.))
 
 -- | "Regular" (non-tensor, non-terminal, non-hom) values within our network
 -- are stored in mutable variables. Over time, we may 'Merge' other values into
 -- here, moving the result up the lattice.
 type Value :: (Type -> Type) -> Type -> Type
-newtype Value m x = Value {ref :: MutVar (PrimState m) (x, m ())}
+newtype Value m x = Value {ref :: Ref m (x, m ())}
   deriving newtype (Eq)
 
 -- | Execute a function on the value within a 'Value' wrapper.
@@ -100,12 +101,9 @@ instance (MonadFail m, MonadPlus m, PrimMonad m) => Propagate (Execute m) where
         let p :: m ()
             p =
               readMutVar xs >>= \(x, _) -> join do
-                atomicModifyMutVar' ys \(y, ps) -> do
-                  let rollback :: m void
-                      rollback = writeMutVar ys (y, ps) *> empty
-
+                atomicModifyMutVar ys \(y, ps) -> do
                   case x <~ y of
-                    Changed z -> ((z, ps), ps <|> rollback)
+                    Changed z -> ((z, ps), ps)
                     Unchanged _ -> ((x, ps), pure ())
 
-        atomicModifyMutVar' xs \(x, ps) -> ((x, p *> ps), p)
+        atomicModifyMutVar xs \(x, ps) -> ((x, p *> ps), p)
