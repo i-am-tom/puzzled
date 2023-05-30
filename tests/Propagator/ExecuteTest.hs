@@ -54,7 +54,7 @@ spec_execute = do
 
     run_ go >>= \output -> output `shouldBe` [['a']]
 
-  it "{ 1 } ⊂ x; { 2 } ⊂ y; { 3 } ⊂ z; x = y; y = z; x = ?" do
+  it "{ 1 } ⊂ x; { 2 } ⊂ y; { 3 } ⊂ z; x = y; y = z; ? ⊂ x" do
     let go :: Tester (Set Int)
         go = unify . ((unify . exl) &&& exr) . (const [1] &&& const [2] &&& const [3])
 
