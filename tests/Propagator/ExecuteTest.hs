@@ -7,25 +7,22 @@
 module Propagator.ExecuteTest where
 
 import Control.Applicative (Alternative (empty))
-import Control.Arrow (runKleisli)
 import Control.Category.Hierarchy
 import Control.Category.Propagate (Propagate (choice, unify))
 import Control.Category.Reify (Reify (..))
-import Control.Monad (MonadPlus)
-import Control.Monad.Branch (BranchT (unBranchT))
+import Control.Monad.Branch (BranchT (unBranchT), all)
 import Control.Monad.Logic (observeAllT)
 import Control.Monad.Primitive (PrimMonad)
 import Data.Functor ((<&>))
 import Data.Kind (Constraint, Type)
 import Data.Monoid.JoinSemilattice (JoinSemilattice)
-import Data.Primitive.MutVar (newMutVar)
 import Data.Set (Set)
 import Hedgehog
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
 import Propagator.Execute
 import Test.Hspec (Spec, it, shouldBe)
-import Prelude hiding (const, curry, id, uncurry, (.))
+import Prelude hiding (all, const, curry, id, uncurry, (.))
 
 type Tester :: Type -> Type
 type Tester = Execute (BranchT IO) Unit
@@ -46,7 +43,7 @@ spec_execute = do
 
     run_ go >>= \output -> output `shouldBe` [['a']]
 
-  it "x = 5; x = y; y = z; z = ?" do
+  it "x ⊂ 5; x = y; y = z; z ⊂ ?" do
     let go :: Tester (Set Char)
         go = unify . ((unify . exl) &&& exr) . (const ['a'] &&& const mempty &&& const mempty)
     -- \^ Assuming the above test worked, we don't do the same dance as
@@ -67,9 +64,9 @@ spec_execute = do
     run_ go >>= \output -> output `shouldBe` [[1], [2]]
 
 run :: (PrimMonad m) => Execute (BranchT m) i o -> Cell (BranchT m) i -> m [o]
-run xs initial = observeAllT $ unBranchT do
-  runKleisli (execute xs) initial >>= \case
-    Object ref -> with ref pure
+run (Execute xs) initial = observeAllT $ unBranchT do
+  xs initial >>= \case
+    Object ref -> unsafeRead ref
     _ -> empty
 
 run_ :: (PrimMonad m) => Execute (BranchT m) Unit o -> m [o]
@@ -93,14 +90,14 @@ type Testable = JoinSemilattice && Eq && Show
 fs =~= gs = do
   x <- forAll genSet
 
-  this <- newMutVar (x, pure ()) >>= run (interpret fs) . Object . Value
-  that <- newMutVar (x, pure ()) >>= run (interpret gs) . Object . Value
+  this <- all (forwards (interpret fs) x)
+  that <- all (forwards (interpret gs) x)
 
   this === that
 
 infix 5 =~=
 
-interpret :: (MonadFail m, MonadPlus m, PrimMonad m) => Reify Testable i o -> Execute m i o
+interpret :: (MonadFail m, PrimMonad m) => Reify Testable i o -> Execute (BranchT m) i o
 interpret = \case
   Compose f g -> interpret f . interpret g
   Identity -> id

@@ -6,7 +6,6 @@
 -- A backtracking monad for primitive operations.
 module Control.Monad.Branch
   ( BranchT (..),
-
     next,
     all,
   )
@@ -34,9 +33,9 @@ instance (PrimMonad m) => PrimMonad (BranchT m) where
 
 -- | Get the next successful result, as well as a 'BranchT' that computes all
 -- the remaining results.
-next :: MonadFail m => BranchT m x -> m (Maybe (x, BranchT m x))
+next :: (MonadFail m) => BranchT m x -> m (Maybe (x, BranchT m x))
 next = fmap coerce . observeT . msplit . unBranchT
 
 -- | Get all successful results in the 'BranchT' computation.
-all :: Applicative m => BranchT m x -> m [x]
+all :: (Applicative m) => BranchT m x -> m [x]
 all = observeAllT . unBranchT
