@@ -10,8 +10,7 @@ import Control.Applicative (Alternative (empty))
 import Control.Category.Hierarchy
 import Control.Category.Propagate (Propagate (choice, unify))
 import Control.Category.Reify (Reify (..))
-import Control.Monad.Branch (BranchT (unBranchT), all)
-import Control.Monad.Logic (observeAllT)
+import Control.Monad.Branch (BranchT, all)
 import Control.Monad.Primitive (PrimMonad)
 import Data.Functor ((<&>))
 import Data.Kind (Constraint, Type)
@@ -33,7 +32,7 @@ spec_execute = do
     let go :: Tester (Set Char)
         go = const ['a']
 
-    run_ go >>= \output -> output `shouldBe` [['a']]
+    run go >>= \output -> output `shouldBe` [['a']]
 
   it "x = 5; x = y; y = ?" do
     let go :: Tester (Set Char)
@@ -41,7 +40,7 @@ spec_execute = do
     -- \^ exr . (unify &&& exr) means we explicitly check the unknown
     -- variable.
 
-    run_ go >>= \output -> output `shouldBe` [['a']]
+    run go >>= \output -> output `shouldBe` [['a']]
 
   it "x ⊂ 5; x = y; y = z; z ⊂ ?" do
     let go :: Tester (Set Char)
@@ -49,28 +48,24 @@ spec_execute = do
     -- \^ Assuming the above test worked, we don't do the same dance as
     -- above.
 
-    run_ go >>= \output -> output `shouldBe` [['a']]
+    run go >>= \output -> output `shouldBe` [['a']]
 
   it "{ 1 } ⊂ x; { 2 } ⊂ y; { 3 } ⊂ z; x = y; y = z; ? ⊂ x" do
     let go :: Tester (Set Int)
         go = unify . ((unify . exl) &&& exr) . (const [1] &&& const [2] &&& const [3])
 
-    run_ go >>= \output -> output `shouldBe` [[1, 2, 3]]
+    run go >>= \output -> output `shouldBe` [[1, 2, 3]]
 
   it "x ⊂ { 1, 2 }; x = y; y = ?" do
     let go :: Tester (Set Int)
         go = choice . (const [1] &&& const [2])
 
-    run_ go >>= \output -> output `shouldBe` [[1], [2]]
+    run go >>= \output -> output `shouldBe` [[1], [2]]
 
-run :: (PrimMonad m) => Execute (BranchT m) i o -> Cell (BranchT m) i -> m [o]
-run (Execute xs) initial = observeAllT $ unBranchT do
-  xs initial >>= \case
+run :: (PrimMonad m) => Execute (BranchT m) Unit o -> m [o]
+run (Execute xs) = all $ xs Terminal >>= \case
     Object ref -> unsafeRead ref
     _ -> empty
-
-run_ :: (PrimMonad m) => Execute (BranchT m) Unit o -> m [o]
-run_ xs = run xs Terminal
 
 ---
 
