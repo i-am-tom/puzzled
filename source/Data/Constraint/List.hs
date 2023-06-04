@@ -33,19 +33,19 @@ module Data.Constraint.List where
 import Data.Kind (Constraint, Type)
 
 -- | A value of type @Dict c x@ is evidence that @c x@ holds.
-type Dict :: (Type -> Constraint) -> Type -> Type
+type Dict :: (k -> Constraint) -> k -> Type
 data Dict c x where Dict :: c x => Dict c x
 
 -- | The product of two constraints is the constraint that both constraints be
 -- satisfied. This forms a 'Monoid'/'Control.Category.Category' with the unit
 -- constraint @()@.
-type (&&) :: (Type -> Constraint) -> (Type -> Constraint) -> (Type -> Constraint)
+type (&&) :: (k -> Constraint) -> (k -> Constraint) -> (k -> Constraint)
 class (c x, d x) => (c && d) x
 instance (c x, d x) => (c && d) x
 
 -- | A class whose instances witness the presence of a given constraint within
 -- a @cons@-style product list of constraints.
-type Elem :: (Type -> Constraint) -> (Type -> Constraint) -> Constraint
+type Elem :: (k -> Constraint) -> (k -> Constraint) -> Constraint
 class Elem c cs where
   infer :: forall x. (cs x) => Dict c x
 
@@ -53,9 +53,9 @@ instance {-# OVERLAPPING #-} Elem c (c && cs) where
   infer = Dict
 
 instance {-# OVERLAPPABLE #-} Elem c cs => Elem c (d && cs) where
-  infer = infer @_ @cs
+  infer = infer @_ @_ @cs
 
 -- | A convenience function for 'infer' that uses the given value as a proxy
 -- for the type in the 'Dict'.
 deduce :: forall c cs x. (Elem c cs, cs x) => x -> Dict c x
-deduce _ = infer @_ @cs
+deduce _ = infer @_ @_ @cs
