@@ -54,3 +54,8 @@ instance {-# OVERLAPPING #-} Elem c (c && cs) where
 
 instance {-# OVERLAPPABLE #-} Elem c cs => Elem c (d && cs) where
   infer = infer @_ @cs
+
+-- | A convenience function for 'infer' that uses the given value as a proxy
+-- for the type in the 'Dict'.
+deduce :: forall c cs x. (Elem c cs, cs x) => x -> Dict c x
+deduce _ = infer @_ @cs
