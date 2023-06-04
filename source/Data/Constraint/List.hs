@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
 
 -- |
@@ -55,6 +56,9 @@ instance {-# OVERLAPPING #-} Elem c (c && cs) where
 
 instance {-# OVERLAPPABLE #-} (Elem c cs) => Elem c (d && cs) where
   infer = infer @_ @_ @cs
+
+instance {-# OVERLAPPABLE #-} (c ~ d) => Elem c d where
+  infer = Dict
 
 -- | A convenience function for 'infer' that uses the given value as a proxy
 -- for the type in the 'Dict'.
