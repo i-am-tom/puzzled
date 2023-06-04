@@ -34,13 +34,14 @@ import Data.Kind (Constraint, Type)
 
 -- | A value of type @Dict c x@ is evidence that @c x@ holds.
 type Dict :: (k -> Constraint) -> k -> Type
-data Dict c x where Dict :: c x => Dict c x
+data Dict c x where Dict :: (c x) => Dict c x
 
 -- | The product of two constraints is the constraint that both constraints be
 -- satisfied. This forms a 'Monoid'/'Control.Category.Category' with the unit
 -- constraint @()@.
 type (&&) :: (k -> Constraint) -> (k -> Constraint) -> (k -> Constraint)
 class (c x, d x) => (c && d) x
+
 instance (c x, d x) => (c && d) x
 
 -- | A class whose instances witness the presence of a given constraint within
@@ -52,7 +53,7 @@ class Elem c cs where
 instance {-# OVERLAPPING #-} Elem c (c && cs) where
   infer = Dict
 
-instance {-# OVERLAPPABLE #-} Elem c cs => Elem c (d && cs) where
+instance {-# OVERLAPPABLE #-} (Elem c cs) => Elem c (d && cs) where
   infer = infer @_ @_ @cs
 
 -- | A convenience function for 'infer' that uses the given value as a proxy
