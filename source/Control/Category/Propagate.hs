@@ -12,8 +12,8 @@ type Propagate :: (Type -> Type -> Type) -> Constraint
 class (Closed k) => Propagate k where
   -- | Fork the computation. In one fork, select the left-hand value. In the
   -- other, select the right-hand value.
-  choice :: k (Tensor x x) x
+  choice :: (Object k x) => k (Tensor x x) x
 
   -- | Map a tensor of two values to their merged value, now asserting that the
   -- two are entirely equal.
-  unify :: k (Tensor x x) x
+  unify :: (Object k x) => k (Tensor x x) x
