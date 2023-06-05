@@ -25,6 +25,7 @@ module Control.Category.Hierarchy
 
     -- * Lifting into Categories
     Const (..),
+    const_,
 
     -- * Utilities
     Trivial,
@@ -35,7 +36,7 @@ where
 import Control.Arrow (Kleisli)
 import Control.Category qualified as Base
 import Data.Kind (Constraint, Type)
-import Prelude hiding (curry, id, uncurry)
+import Prelude hiding (const, curry, id, uncurry, (.))
 
 -- | We define categories in terms of their morphisms, and say that a category
 -- must have a defined identity morphism (mapping every element to itself) and
@@ -128,6 +129,10 @@ type Const :: (Type -> Type -> Type) -> Type -> Constraint
 class (Terminal k) => Const k x where
   -- | Lift a value into the category as an arrow from 'Unit'.
   const :: (Object k x) => x -> k Unit x
+
+-- | Like 'const' but with an unrestricted domain.
+const_ :: (Const k x, Object k i, Object k Unit, Object k x) => x -> k i x
+const_ x = const x . kill
 
 -------------------------------------------------------------------------------
 
