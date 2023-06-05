@@ -47,56 +47,57 @@ instance (Elem (Eq && Typeable) c) => Eq (Reify c x y) where
       go :: Reify c i j -> Reify c k l -> Bool
       go = \cases
         (Compose fx fy) (Compose gx gy) -> go fx gx && go fy gy
-        (Identity) (Identity) -> True
+        Identity Identity -> True
         (Fork x y) (Fork z w) -> go x z && go y w
-        (Exl) (Exl) -> True
-        (Exr) (Exr) -> True
+        Exl Exl -> True
+        Exr Exr -> True
         (Curry x) (Curry y) -> go x y
         (Uncurry x) (Uncurry y) -> go x y
-        (Kill) (Kill) -> True
+        Kill Kill -> True
         (Const x) (Const y)
           | Dict <- deduce @(Eq && Typeable) @c x,
             Dict <- deduce @(Eq && Typeable) @c y -> do
               case eqTypeRep (typeOf x) (typeOf y) of
                 Just HRefl -> x == y
                 Nothing -> False
-        (Choice) (Choice) -> True
-        (Unify) (Unify) -> True
-        (_) (_) -> False
+        Choice Choice -> True
+        Unify Unify -> True
+        _ _ -> False
 
 instance (Elem Show c) => Show (Reify c x y) where
-  showsPrec p (Compose f g) =
-    showParen (p >= 11) $
-      showString "Compose "
-        . showsPrec 11 f
-        . showSpace
-        . showsPrec 11 g
-  showsPrec _ Identity =
-    showString "Identity"
-  showsPrec p (Fork f g) =
-    showParen (p >= 11) $
-      showString "Fork"
-        . showsPrec 11 f
-        . showSpace
-        . showsPrec 11 g
-  showsPrec _ Exl = showString "Exl"
-  showsPrec _ Exr = showString "Exr"
-  showsPrec p (Curry f) =
-    showParen (p >= 11) $
-      showString "Curry "
-        . showsPrec 11 f
-  showsPrec p (Uncurry f) =
-    showParen (p >= 11) $
-      showString "Uncurry "
-        . showsPrec 11 f
-  showsPrec _ Kill = showString "Kill"
-  showsPrec p (Const x)
-    | Dict <- deduce @Show @c x =
-        showParen (p >= 11) $
-          showString "Const "
-            . showsPrec 11 x
-  showsPrec _ Choice = showString "Choice"
-  showsPrec _ Unify = showString "Unify"
+  showsPrec p = \case
+    Compose f g ->
+      showParen (p >= 11) $
+        showString "Compose "
+          . showsPrec 11 f
+          . showSpace
+          . showsPrec 11 g
+    Identity ->
+      showString "Identity"
+    Fork f g ->
+      showParen (p >= 11) $
+        showString "Fork"
+          . showsPrec 11 f
+          . showSpace
+          . showsPrec 11 g
+    Exl -> showString "Exl"
+    Exr -> showString "Exr"
+    Curry f ->
+      showParen (p >= 11) $
+        showString "Curry "
+          . showsPrec 11 f
+    Uncurry f ->
+      showParen (p >= 11) $
+        showString "Uncurry "
+          . showsPrec 11 f
+    Kill -> showString "Kill"
+    Const x
+      | Dict <- deduce @Show @c x ->
+          showParen (p >= 11) $
+            showString "Const "
+              . showsPrec 11 x
+    Choice -> showString "Choice"
+    Unify -> showString "Unify"
 
 instance Category (Reify cs) where
   type Object (Reify cs) = cs
