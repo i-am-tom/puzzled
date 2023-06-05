@@ -11,9 +11,10 @@ module Control.Category.Reify where
 
 import Control.Category.Hierarchy
 import Control.Category.Propagate (Propagate (choice, unify))
+import Data.Constraint.List (Dict (Dict), Elem, deduce)
 import Data.Kind (Constraint, Type)
 import GHC.Show (showSpace)
-import Type.Reflection (Typeable, eqTypeRep, typeRep, (:~~:) (HRefl))
+import Type.Reflection (Typeable, eqTypeRep, typeOf, (:~~:) (HRefl))
 import Prelude hiding ((.))
 
 -- | A category that implements the hierarchy by reifying all functions as
@@ -22,41 +23,46 @@ import Prelude hiding ((.))
 type Reify :: (Type -> Constraint) -> Type -> Type -> Type
 data Reify c x y where
   -- Category
-  Compose :: (Typeable y) => Reify c y z -> Reify c x y -> Reify c x z
-  Identity :: Reify c x x
+  Compose :: (c x, c y, c z) => Reify c y z -> Reify c x y -> Reify c x z
+  Identity :: (c x) => Reify c x x
   -- Cartesian
-  Fork :: Reify c x y -> Reify c x z -> Reify c x (Tensor y z)
-  Exl :: Reify c (Tensor x y) x
-  Exr :: Reify c (Tensor x y) y
+  Fork :: (c x, c y, c z) => Reify c x y -> Reify c x z -> Reify c x (Tensor y z)
+  Exl :: (c x, c y) => Reify c (Tensor x y) x
+  Exr :: (c x, c y) => Reify c (Tensor x y) y
   -- Closed
-  Curry :: Reify c (Tensor x y) z -> Reify c x (Hom y z)
-  Uncurry :: Reify c x (Hom y z) -> Reify c (Tensor x y) z
+  Curry :: (c x, c y, c z) => Reify c (Tensor x y) z -> Reify c x (Hom y z)
+  Uncurry :: (c x, c y, c z) => Reify c x (Hom y z) -> Reify c (Tensor x y) z
   -- Terminal
-  Kill :: Reify c x Unit
+  Kill :: (c x) => Reify c x Unit
   -- Constant
   Const :: (c x) => x -> Reify c Unit x
   -- Propagate
-  Choice :: Reify c (Tensor x x) x
-  Unify :: Reify c (Tensor x x) x
+  Choice :: (c x) => Reify c (Tensor x x) x
+  Unify :: (c x) => Reify c (Tensor x x) x
 
-instance (forall e. (c e) => Eq (Ghost e)) => Eq (Reify c x y) where
-  Compose fx (fy :: _ m) == Compose gx (gy :: _ n) =
-    case typeRep @m `eqTypeRep` typeRep @n of
-      Just HRefl -> fx == gx && fy == gy
-      Nothing -> False
-  Identity == Identity = True
-  Fork x y == Fork z w = x == z && y == w
-  Exl == Exl = True
-  Exr == Exr = True
-  Curry x == Curry y = x == y
-  Uncurry x == Uncurry y = x == y
-  Kill == Kill = True
-  Const x == Const y = Ghost x == Ghost y
-  Choice == Choice = True
-  Unify == Unify = True
-  _ == _ = False
+instance (Elem (Eq && Typeable) c) => Eq (Reify c x y) where
+  (==) = go
+    where
+      go :: Reify c i j -> Reify c k l -> Bool
+      go (Compose fx fy) (Compose gx gy) = go fx gx && go fy gy
+      go (Identity) (Identity) = True
+      go (Fork x y) (Fork z w) = go x z && go y w
+      go (Exl) (Exl) = True
+      go (Exr) (Exr) = True
+      go (Curry x) (Curry y) = go x y
+      go (Uncurry x) (Uncurry y) = go x y
+      go (Kill) (Kill) = True
+      go (Const x) (Const y)
+        | Dict <- deduce @(Eq && Typeable) @c x,
+          Dict <- deduce @(Eq && Typeable) @c y = do
+            case eqTypeRep (typeOf x) (typeOf y) of
+              Just HRefl -> x == y
+              Nothing -> False
+      go (Choice) (Choice) = True
+      go (Unify) (Unify) = True
+      go (_) (_) = False
 
-instance (forall e. (c e) => Show (Ghost e)) => Show (Reify c x y) where
+instance (Elem Show c) => Show (Reify c x y) where
   showsPrec p (Compose f g) =
     showParen (p >= 11) $
       showString "Compose "
@@ -82,47 +88,35 @@ instance (forall e. (c e) => Show (Ghost e)) => Show (Reify c x y) where
       showString "Uncurry "
         . showsPrec 11 f
   showsPrec _ Kill = showString "Kill"
-  showsPrec p (Const x) =
-    showParen (p >= 11) $
-      showString "Const "
-        . showsPrec 11 (Ghost x)
+  showsPrec p (Const x)
+    | Dict <- deduce @Show @c x =
+        showParen (p >= 11) $
+          showString "Const "
+            . showsPrec 11 x
   showsPrec _ Choice = showString "Choice"
   showsPrec _ Unify = showString "Unify"
 
-instance Category (Reify c) where
-  type Object (Reify c) = Typeable
+instance Category (Reify cs) where
+  type Object (Reify cs) = cs
 
   (.) = Compose
   id = Identity
 
-instance Cartesian (Reify c) where
+instance Cartesian (Reify cs) where
   (&&&) = Fork
   exl = Exl
   exr = Exr
 
-instance Closed (Reify c) where
+instance Closed (Reify cs) where
   curry = Curry
   uncurry = Uncurry
 
-instance Terminal (Reify c) where
+instance Terminal (Reify cs) where
   kill = Kill
 
-instance (c x) => Const (Reify c) x where
+instance (cs x) => Const (Reify cs) x where
   const = Const
 
-instance Propagate (Reify c) where
+instance Propagate (Reify cs) where
   choice = Choice
   unify = Unify
-
----
-
--- | Because of the way quantified constraints works, we can't do the seemingly
--- obvious thing that is @forall x. c x => Eq x@ to say that our mystery @c@
--- implies 'Eq'. Instead, we have to say that it implies 'Eq' on some newtype,
--- and then use _that_ evidence to do what we want. This is a bit clunky, but
--- it works.
---
--- https://gitlab.haskell.org/ghc/ghc/-/issues/15636
-type Ghost :: Type -> Type
-newtype Ghost x = Ghost x
-  deriving newtype (Eq, Ord, Show)
