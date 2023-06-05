@@ -1,5 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
 
 -- |
@@ -51,6 +52,15 @@ type Elem :: (k -> Constraint) -> (k -> Constraint) -> Constraint
 class Elem c cs where
   infer :: forall x. (cs x) => Dict c x
 
+-- In the case of a subset...
+instance {-# OVERLAPPING #-} (Elem d cs, Elem ds cs) => Elem (d && ds) cs where
+  infer :: forall x. (cs x) => Dict (d && ds) x
+  infer
+    | Dict <- infer @_ @d @cs @x,
+      Dict <- infer @_ @ds @cs @x =
+        Dict
+
+-- ... and in the case of single elements...
 instance {-# OVERLAPPING #-} Elem c (c && cs) where
   infer = Dict
 
