@@ -1,4 +1,5 @@
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -44,23 +45,24 @@ instance (Elem (Eq && Typeable) c) => Eq (Reify c x y) where
   (==) = go
     where
       go :: Reify c i j -> Reify c k l -> Bool
-      go (Compose fx fy) (Compose gx gy) = go fx gx && go fy gy
-      go (Identity) (Identity) = True
-      go (Fork x y) (Fork z w) = go x z && go y w
-      go (Exl) (Exl) = True
-      go (Exr) (Exr) = True
-      go (Curry x) (Curry y) = go x y
-      go (Uncurry x) (Uncurry y) = go x y
-      go (Kill) (Kill) = True
-      go (Const x) (Const y)
-        | Dict <- deduce @(Eq && Typeable) @c x,
-          Dict <- deduce @(Eq && Typeable) @c y = do
-            case eqTypeRep (typeOf x) (typeOf y) of
-              Just HRefl -> x == y
-              Nothing -> False
-      go (Choice) (Choice) = True
-      go (Unify) (Unify) = True
-      go (_) (_) = False
+      go = \cases
+        (Compose fx fy) (Compose gx gy) -> go fx gx && go fy gy
+        (Identity) (Identity) -> True
+        (Fork x y) (Fork z w) -> go x z && go y w
+        (Exl) (Exl) -> True
+        (Exr) (Exr) -> True
+        (Curry x) (Curry y) -> go x y
+        (Uncurry x) (Uncurry y) -> go x y
+        (Kill) (Kill) -> True
+        (Const x) (Const y)
+          | Dict <- deduce @(Eq && Typeable) @c x,
+            Dict <- deduce @(Eq && Typeable) @c y -> do
+              case eqTypeRep (typeOf x) (typeOf y) of
+                Just HRefl -> x == y
+                Nothing -> False
+        (Choice) (Choice) -> True
+        (Unify) (Unify) -> True
+        (_) (_) -> False
 
 instance (Elem Show c) => Show (Reify c x y) where
   showsPrec p (Compose f g) =
