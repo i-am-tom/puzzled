@@ -43,9 +43,11 @@ data Reify c k x y where
   -- Extension
   Other :: k c x y -> Reify c k x y
 
-deriving via (Heterogeneous (Reify c k) x y)
-  instance (Elem (Eq && Typeable) c, HEq (k c))
-    => Eq (Reify c k x y)
+deriving via
+  (Heterogeneous (Reify c k) x y)
+  instance
+    (Elem (Eq && Typeable) c, HEq (k c)) =>
+    Eq (Reify c k x y)
 
 instance (Elem (Eq && Typeable) c, HEq (k c)) => HEq (Reify c k) where
   (===) = \cases
@@ -68,8 +70,10 @@ instance (Elem (Eq && Typeable) c, HEq (k c)) => HEq (Reify c k) where
     (Other x) (Other y) -> x === y
     _ _ -> False
 
-instance (Elem Show c, forall a b. Show (k c a b))
-    => Show (Reify c k x y) where
+instance
+  (Elem Show c, forall a b. Show (k c a b)) =>
+  Show (Reify c k x y)
+  where
   showsPrec p = \case
     Compose f g ->
       showParen (p >= 11) $
