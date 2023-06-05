@@ -12,7 +12,6 @@ import Data.Kind (Constraint, Type)
 -- domain and codomain can be established within the implementation.
 type HEq :: (Type -> Type -> Type) -> Constraint
 class (forall x y. Eq (k x y)) => HEq k where
-
   -- | Check whether two arrows are equal.
   --
   -- prop> (x === y) == (x == y)
@@ -25,5 +24,5 @@ type Heterogeneous :: (Type -> Type -> Type) -> Type -> Type -> Type
 newtype Heterogeneous k x y = Heterogeneous (k x y)
   deriving newtype (HEq)
 
-instance HEq k => Eq (Heterogeneous k x y) where
+instance (HEq k) => Eq (Heterogeneous k x y) where
   (==) = (===)

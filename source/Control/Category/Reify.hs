@@ -1,4 +1,4 @@
-{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE QuantifiedConstraints #-}
@@ -9,6 +9,7 @@
 -- The category of reified category operations.
 module Control.Category.Reify where
 
+import Control.Category.Eq (HEq ((===)), Heterogeneous (Heterogeneous))
 import Control.Category.Hierarchy
 import Control.Category.Propagate (Propagate (choice, unify))
 import Data.Constraint.List (Dict (Dict), Elem, deduce)
@@ -20,50 +21,55 @@ import Prelude hiding ((.))
 -- | A category that implements the hierarchy by reifying all functions as
 -- constructors in this GADT. This is useful because we can use it to observe
 -- the structure of a computation.
-type Reify :: (Type -> Constraint) -> Type -> Type -> Type
-data Reify c x y where
+type Reify :: (Type -> Constraint) -> ((Type -> Constraint) -> Type -> Type -> Type) -> Type -> Type -> Type
+data Reify c k x y where
   -- Category
-  Compose :: (c x, c y, c z) => Reify c y z -> Reify c x y -> Reify c x z
-  Identity :: (c x) => Reify c x x
+  Compose :: (c x, c y, c z) => Reify c k y z -> Reify c k x y -> Reify c k x z
+  Identity :: (c x) => Reify c k x x
   -- Cartesian
-  Fork :: (c x, c y, c z) => Reify c x y -> Reify c x z -> Reify c x (Tensor y z)
-  Exl :: (c x, c y) => Reify c (Tensor x y) x
-  Exr :: (c x, c y) => Reify c (Tensor x y) y
+  Fork :: (c x, c y, c z) => Reify c k x y -> Reify c k x z -> Reify c k x (Tensor y z)
+  Exl :: (c x, c y) => Reify c k (Tensor x y) x
+  Exr :: (c x, c y) => Reify c k (Tensor x y) y
   -- Closed
-  Curry :: (c x, c y, c z) => Reify c (Tensor x y) z -> Reify c x (Hom y z)
-  Uncurry :: (c x, c y, c z) => Reify c x (Hom y z) -> Reify c (Tensor x y) z
+  Curry :: (c x, c y, c z) => Reify c k (Tensor x y) z -> Reify c k x (Hom y z)
+  Uncurry :: (c x, c y, c z) => Reify c k x (Hom y z) -> Reify c k (Tensor x y) z
   -- Terminal
-  Kill :: (c x) => Reify c x Unit
+  Kill :: (c x) => Reify c k x Unit
   -- Constant
-  Const :: (c x) => x -> Reify c Unit x
+  Const :: (c x) => x -> Reify c k Unit x
   -- Propagate
-  Choice :: (c x) => Reify c (Tensor x x) x
-  Unify :: (c x) => Reify c (Tensor x x) x
+  Choice :: (c x) => Reify c k (Tensor x x) x
+  Unify :: (c x) => Reify c k (Tensor x x) x
+  -- Extension
+  Other :: k c x y -> Reify c k x y
 
-instance (Elem (Eq && Typeable) c) => Eq (Reify c x y) where
-  (==) = go
-    where
-      go :: Reify c i j -> Reify c k l -> Bool
-      go = \cases
-        (Compose fx fy) (Compose gx gy) -> go fx gx && go fy gy
-        Identity Identity -> True
-        (Fork x y) (Fork z w) -> go x z && go y w
-        Exl Exl -> True
-        Exr Exr -> True
-        (Curry x) (Curry y) -> go x y
-        (Uncurry x) (Uncurry y) -> go x y
-        Kill Kill -> True
-        (Const x) (Const y)
-          | Dict <- deduce @(Eq && Typeable) @c x,
-            Dict <- deduce @(Eq && Typeable) @c y -> do
-              case eqTypeRep (typeOf x) (typeOf y) of
-                Just HRefl -> x == y
-                Nothing -> False
-        Choice Choice -> True
-        Unify Unify -> True
-        _ _ -> False
+deriving via (Heterogeneous (Reify c k) x y)
+  instance (Elem (Eq && Typeable) c, HEq (k c))
+    => Eq (Reify c k x y)
 
-instance (Elem Show c) => Show (Reify c x y) where
+instance (Elem (Eq && Typeable) c, HEq (k c)) => HEq (Reify c k) where
+  (===) = \cases
+    (Compose fx fy) (Compose gx gy) -> fx === gx && fy === gy
+    Identity Identity -> True
+    (Fork x y) (Fork z w) -> x === z && y === w
+    Exl Exl -> True
+    Exr Exr -> True
+    (Curry x) (Curry y) -> x === y
+    (Uncurry x) (Uncurry y) -> x === y
+    Kill Kill -> True
+    (Const x) (Const y)
+      | Dict <- deduce @(Eq && Typeable) @c x,
+        Dict <- deduce @(Eq && Typeable) @c y -> do
+          case eqTypeRep (typeOf x) (typeOf y) of
+            Just HRefl -> x == y
+            Nothing -> False
+    Choice Choice -> True
+    Unify Unify -> True
+    (Other x) (Other y) -> x === y
+    _ _ -> False
+
+instance (Elem Show c, forall a b. Show (k c a b))
+    => Show (Reify c k x y) where
   showsPrec p = \case
     Compose f g ->
       showParen (p >= 11) $
@@ -97,28 +103,32 @@ instance (Elem Show c) => Show (Reify c x y) where
               . showsPrec 11 x
     Choice -> showString "Choice"
     Unify -> showString "Unify"
+    Other x ->
+      showParen (p >= 11) $
+        showString "Other "
+          . showsPrec 11 x
 
-instance Category (Reify cs) where
-  type Object (Reify cs) = cs
+instance Category (Reify cs k) where
+  type Object (Reify cs k) = cs
 
   (.) = Compose
   id = Identity
 
-instance Cartesian (Reify cs) where
+instance Cartesian (Reify cs k) where
   (&&&) = Fork
   exl = Exl
   exr = Exr
 
-instance Closed (Reify cs) where
+instance Closed (Reify cs k) where
   curry = Curry
   uncurry = Uncurry
 
-instance Terminal (Reify cs) where
+instance Terminal (Reify cs k) where
   kill = Kill
 
-instance (cs x) => Const (Reify cs) x where
+instance (cs x) => Const (Reify cs k) x where
   const = Const
 
-instance Propagate (Reify cs) where
+instance Propagate (Reify cs k) where
   choice = Choice
   unify = Unify
