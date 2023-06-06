@@ -21,35 +21,35 @@ import Prelude hiding ((.))
 -- | A category that implements the hierarchy by reifying all functions as
 -- constructors in this GADT. This is useful because we can use it to observe
 -- the structure of a computation.
-type Reify :: (Type -> Constraint) -> ((Type -> Constraint) -> Type -> Type -> Type) -> Type -> Type -> Type
-data Reify c k x y where
+type Reify :: (Type -> Constraint) -> ((Type -> Constraint) -> Type -> Type -> Type) -> (Type -> Type) -> Type -> Type -> Type
+data Reify c k f x y where
   -- Category
-  Compose :: (c x, c y, c z) => Reify c k y z -> Reify c k x y -> Reify c k x z
-  Identity :: (c x) => Reify c k x x
+  Compose :: (c x, c y, c z) => Reify c k f y z -> Reify c k f x y -> Reify c k f x z
+  Identity :: (c x) => Reify c k f x x
   -- Cartesian
-  Fork :: (c x, c y, c z) => Reify c k x y -> Reify c k x z -> Reify c k x (Tensor y z)
-  Exl :: (c x, c y) => Reify c k (Tensor x y) x
-  Exr :: (c x, c y) => Reify c k (Tensor x y) y
+  Fork :: (c x, c y, c z) => Reify c k f x y -> Reify c k f x z -> Reify c k f x (Tensor y z)
+  Exl :: (c x, c y) => Reify c k f (Tensor x y) x
+  Exr :: (c x, c y) => Reify c k f (Tensor x y) y
   -- Closed
-  Curry :: (c x, c y, c z) => Reify c k (Tensor x y) z -> Reify c k x (Hom y z)
-  Uncurry :: (c x, c y, c z) => Reify c k x (Hom y z) -> Reify c k (Tensor x y) z
+  Curry :: (c x, c y, c z) => Reify c k f (Tensor x y) z -> Reify c k f x (Hom y z)
+  Uncurry :: (c x, c y, c z) => Reify c k f x (Hom y z) -> Reify c k f (Tensor x y) z
   -- Terminal
-  Kill :: (c x) => Reify c k x Unit
+  Kill :: (c x) => Reify c k f x Unit
   -- Constant
-  Const :: (c x) => x -> Reify c k Unit x
+  Const :: (c (f x)) => f x -> Reify c k f Unit x
   -- Propagate
-  Choice :: (c x) => Reify c k (Tensor x x) x
-  Unify :: (c x) => Reify c k (Tensor x x) x
+  Choice :: (c x) => Reify c k f (Tensor x x) x
+  Unify :: (c x) => Reify c k f (Tensor x x) x
   -- Extension
-  Other :: k c x y -> Reify c k x y
+  Other :: k c x y -> Reify c k f x y
 
 deriving via
-  (Heterogeneous (Reify c k) x y)
+  (Heterogeneous (Reify c k f) x y)
   instance
     (Elem (Eq && Typeable) c, HEq (k c)) =>
-    Eq (Reify c k x y)
+    Eq (Reify c k f x y)
 
-instance (Elem (Eq && Typeable) c, HEq (k c)) => HEq (Reify c k) where
+instance (Elem (Eq && Typeable) c, HEq (k c)) => HEq (Reify c k f) where
   (===) = \cases
     (Compose fx fy) (Compose gx gy) -> fx === gx && fy === gy
     Identity Identity -> True
@@ -72,7 +72,7 @@ instance (Elem (Eq && Typeable) c, HEq (k c)) => HEq (Reify c k) where
 
 instance
   (Elem Show c, forall a b. Show (k c a b)) =>
-  Show (Reify c k x y)
+  Show (Reify c k f x y)
   where
   showsPrec p = \case
     Compose f g ->
@@ -112,27 +112,27 @@ instance
         showString "Other "
           . showsPrec 11 x
 
-instance Category (Reify cs k) where
-  type Object (Reify cs k) = cs
+instance Category (Reify cs k f) where
+  type Object (Reify cs k f) = cs
 
   (.) = Compose
   id = Identity
 
-instance Cartesian (Reify cs k) where
+instance Cartesian (Reify cs k f) where
   (&&&) = Fork
   exl = Exl
   exr = Exr
 
-instance Closed (Reify cs k) where
+instance Closed (Reify cs k f) where
   curry = Curry
   uncurry = Uncurry
 
-instance Terminal (Reify cs k) where
+instance Terminal (Reify cs k f) where
   kill = Kill
 
-instance (cs x) => Const (Reify cs k) x where
-  const = Const
+instance (Applicative f, cs (f x)) => Const (Reify cs k f) x where
+  const = Const . pure
 
-instance Propagate (Reify cs k) where
+instance Propagate (Reify cs k f) where
   choice = Choice
   unify = Unify
