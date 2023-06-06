@@ -144,4 +144,7 @@ instance Propagate (Reify cs k) where
 -- | A void category that can be used to instantiate a version of 'Reify' with
 -- no extensions.
 type Void :: (Type -> Constraint) -> Type -> Type -> Type
-data Void c x y
+data Void c x y deriving stock (Eq, Ord, Show)
+
+instance HEq (Void c) where
+  (===) = \case {}
