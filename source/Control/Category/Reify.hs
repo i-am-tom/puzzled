@@ -7,7 +7,11 @@
 
 -- |
 -- The category of reified category operations.
-module Control.Category.Reify where
+module Control.Category.Reify
+  ( Reify (..),
+    Void,
+  )
+where
 
 import Control.Category.Eq (HEq ((===)), Heterogeneous (Heterogeneous))
 import Control.Category.Hierarchy
@@ -136,3 +140,8 @@ instance (Applicative f, cs (f x)) => Const (Reify cs k f) x where
 instance Propagate (Reify cs k f) where
   choice = Choice
   unify = Unify
+
+-- | A void category that can be used to instantiate a version of 'Reify' with
+-- no extensions.
+type Void :: (Type -> Constraint) -> Type -> Type -> Type
+data Void c x y
