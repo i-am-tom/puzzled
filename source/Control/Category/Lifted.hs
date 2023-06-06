@@ -4,8 +4,9 @@
 -- |
 -- Arrows _within_ some 'Applicative' context.
 module Control.Category.Lifted
-  ( Lifted (..)
-  ) where
+  ( Lifted (..),
+  )
+where
 
 import Control.Applicative (liftA2)
 import Control.Category.Hierarchy
