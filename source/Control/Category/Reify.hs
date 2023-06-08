@@ -13,12 +13,12 @@ module Control.Category.Reify
   )
 where
 
-import Data.Tuple (Solo (..))
 import Control.Category.Eq (HEq ((===)))
 import Control.Category.Hierarchy
 import Control.Category.Propagate (Propagate (choice, unify))
-import Data.Constraint.Extra (type (-->), type (&&))
+import Data.Constraint.Extra (type (&&), type (-->))
 import Data.Kind (Constraint, Type)
+import Data.Tuple (Solo (..))
 import GHC.Show (showSpace)
 import Type.Reflection (Typeable, eqTypeRep, typeOf, (:~~:) (HRefl))
 import Prelude hiding ((.))
@@ -29,22 +29,22 @@ import Prelude hiding ((.))
 type Reify :: (Type -> Constraint) -> ((Type -> Constraint) -> Type -> Type -> Type) -> Type -> Type -> Type
 data Reify c k x y where
   -- Category
-  Compose :: Reify c k y z -> Reify c k x y -> Reify c k x z
-  Identity :: Reify c k x x
+  Compose :: (Typeable x, Typeable y, Typeable z) => Reify c k y z -> Reify c k x y -> Reify c k x z
+  Identity :: (Typeable x) => Reify c k x x
   -- Cartesian
-  Fork :: Reify c k x y -> Reify c k x z -> Reify c k x (Tensor y z)
-  Exl :: Reify c k (Tensor x y) x
-  Exr :: Reify c k (Tensor x y) y
+  Fork :: (Typeable x, Typeable y, Typeable z) => Reify c k x y -> Reify c k x z -> Reify c k x (Tensor y z)
+  Exl :: (Typeable x, Typeable y) => Reify c k (Tensor x y) x
+  Exr :: (Typeable x, Typeable y) => Reify c k (Tensor x y) y
   -- Closed
-  Curry :: Reify c k (Tensor x y) z -> Reify c k x (Hom y z)
-  Uncurry :: Reify c k x (Hom y z) -> Reify c k (Tensor x y) z
+  Curry :: (Typeable x, Typeable y, Typeable z) => Reify c k (Tensor x y) z -> Reify c k x (Hom y z)
+  Uncurry :: (Typeable x, Typeable y, Typeable z) => Reify c k x (Hom y z) -> Reify c k (Tensor x y) z
   -- Terminal
-  Kill :: Reify c k x Unit
+  Kill :: (Typeable x) => Reify c k x Unit
   -- Constant
   Const :: (c x) => x -> Reify c k y x
   -- Propagate
-  Choice :: Reify c k (Tensor x x) x
-  Unify :: Reify c k (Tensor x x) x
+  Choice :: (Typeable x) => Reify c k (Tensor x x) x
+  Unify :: (Typeable x) => Reify c k (Tensor x x) x
   -- Extension
   Other :: k c x y -> Reify c k x y
 
@@ -66,8 +66,8 @@ instance (c --> (Eq && Typeable), HEq (k c)) => HEq (Reify c k) where
           y' = Solo y
 
       case eqTypeRep (typeOf x') (typeOf y') of
-          Just HRefl -> x' == y'
-          Nothing -> False
+        Just HRefl -> x' == y'
+        Nothing -> False
     Choice Choice -> True
     Unify Unify -> True
     (Other x) (Other y) -> x === y
