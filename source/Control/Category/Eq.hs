@@ -18,11 +18,3 @@ class (forall x y. Eq (k x y)) => HEq k where
   (===) :: k a b -> k c d -> Bool
 
 infix 4 ===
-
--- | A newtype via which we can derive 'Eq' given an instance of 'HEq'.
-type Heterogeneous :: (Type -> Type -> Type) -> Type -> Type -> Type
-newtype Heterogeneous k x y = Heterogeneous (k x y)
-  deriving newtype (HEq)
-
-instance (HEq k) => Eq (Heterogeneous k x y) where
-  (==) = (===)
