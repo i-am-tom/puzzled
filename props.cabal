@@ -15,6 +15,7 @@ library
     Propagator.Execute
   build-depends:
     , base
+    , boring
     , containers
     , logict
     , primitive

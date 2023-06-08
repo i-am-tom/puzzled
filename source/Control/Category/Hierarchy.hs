@@ -29,6 +29,7 @@ where
 
 import Control.Arrow (Kleisli)
 import Control.Category qualified as Base
+import Data.Boring (Absurd (absurd))
 import Data.Constraint.Extra (Trivial)
 import Data.Kind (Constraint, Type)
 import Prelude hiding (const, curry, id, uncurry, (.))
@@ -66,6 +67,9 @@ instance (Monad m) => Category (Kleisli m) where
 type Tensor :: Type -> Type -> Type
 data Tensor x y deriving stock (Eq, Ord, Show)
 
+instance Absurd (Tensor x y) where
+  absurd = \case {}
+
 -- | Categories with a notion of products (tensors).
 type Cartesian :: (Type -> Type -> Type) -> Constraint
 class (Category k) => Cartesian k where
@@ -90,6 +94,9 @@ swap = exr &&& exl
 type Hom :: Type -> Type -> Type
 data Hom x y deriving stock (Eq, Ord, Show)
 
+instance Absurd (Hom x y) where
+  absurd = \case {}
+
 -- | Categories with a notion of homomorphisms.
 type Closed :: (Type -> Type -> Type) -> Constraint
 class (Cartesian k) => Closed k where
@@ -110,6 +117,9 @@ class (Cartesian k) => Closed k where
 -- 'Tensor' and 'Hom' for more information as to why we don't use '()'.
 type Unit :: Type
 data Unit deriving stock (Eq, Ord, Show)
+
+instance Absurd Unit where
+  absurd = \case {}
 
 -- | Categories with a terminal object.
 type Terminal :: (Type -> Type -> Type) -> Constraint
