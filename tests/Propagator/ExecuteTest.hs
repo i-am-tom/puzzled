@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedLists #-}
@@ -8,11 +9,11 @@ module Propagator.ExecuteTest where
 
 import Control.Applicative (Alternative (empty))
 import Control.Category.Hierarchy
+import Data.Constraint.Extra (type (&&))
 import Control.Category.Propagate (Propagate (choice, unify))
-import Control.Category.Reify (Reify (..))
+import Control.Category.Reify (Reify (..), Void)
 import Control.Monad.Branch (BranchT, all)
 import Control.Monad.Primitive (PrimMonad)
-import Data.Functor ((<&>))
 import Data.Kind (Constraint, Type)
 import Data.Monoid.JoinSemilattice (JoinSemilattice)
 import Data.Set (Set)
@@ -81,8 +82,8 @@ type Testable = JoinSemilattice && Eq && Show
 -- same input, and compare the outputs.
 (=~=) ::
   (PrimMonad m) =>
-  Reify Testable (Set Char) (Set Char) ->
-  Reify Testable (Set Char) (Set Char) ->
+  Reify Testable Void (Set Char) (Set Char) ->
+  Reify Testable Void (Set Char) (Set Char) ->
   PropertyT m ()
 fs =~= gs = do
   x <- forAll genSet
@@ -94,7 +95,7 @@ fs =~= gs = do
 
 infix 5 =~=
 
-interpret :: (MonadFail m, PrimMonad m) => Reify Testable i o -> Execute (BranchT m) i o
+interpret :: (MonadFail m, PrimMonad m) => Reify Testable Void i o -> Execute (BranchT m) i o
 interpret = \case
   Compose f g -> interpret f . interpret g
   Identity -> id
@@ -107,13 +108,14 @@ interpret = \case
   Const x -> const x
   Choice -> choice
   Unify -> unify
+  Other x -> case x of {}
 
-genProgram :: Gen (Reify Testable (Set Char) (Set Char))
+genProgram :: Gen (Reify Testable Void (Set Char) (Set Char))
 genProgram =
   Gen.recursive
     Gen.choice
     [ pure id,
-      genSet <&> \x -> const x . kill
+      fmap const genSet
     ]
     [ Gen.subterm2 genProgram genProgram (.),
       Gen.subterm2 genProgram genProgram \x y -> exl . (x &&& y),

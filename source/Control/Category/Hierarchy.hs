@@ -1,4 +1,5 @@
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
@@ -22,7 +23,6 @@ module Control.Category.Hierarchy
 
     -- * Lifting into Categories
     Const (..),
-    const_,
   )
 where
 
@@ -122,8 +122,4 @@ class (Category k) => Terminal k where
 type Const :: (Type -> Type -> Type) -> Type -> Constraint
 class (Terminal k) => Const k x where
   -- | Lift a value into the category as an arrow from 'Unit'.
-  const :: (Object k x) => x -> k Unit x
-
--- | Like 'const' but with an unrestricted domain.
-const_ :: (Const k x, Object k i, Object k Unit, Object k x) => x -> k i x
-const_ x = const x . kill
+  const :: (Object k x, Object k y) => x -> k y x

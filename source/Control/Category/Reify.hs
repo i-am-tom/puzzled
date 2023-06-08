@@ -29,22 +29,22 @@ import Prelude hiding ((.))
 type Reify :: (Type -> Constraint) -> ((Type -> Constraint) -> Type -> Type -> Type) -> Type -> Type -> Type
 data Reify c k x y where
   -- Category
-  Compose :: (c x, c y, c z) => Reify c k y z -> Reify c k x y -> Reify c k x z
-  Identity :: (c x) => Reify c k x x
+  Compose :: Reify c k y z -> Reify c k x y -> Reify c k x z
+  Identity :: Reify c k x x
   -- Cartesian
-  Fork :: (c x, c y, c z) => Reify c k x y -> Reify c k x z -> Reify c k x (Tensor y z)
-  Exl :: (c x, c y) => Reify c k (Tensor x y) x
-  Exr :: (c x, c y) => Reify c k (Tensor x y) y
+  Fork :: Reify c k x y -> Reify c k x z -> Reify c k x (Tensor y z)
+  Exl :: Reify c k (Tensor x y) x
+  Exr :: Reify c k (Tensor x y) y
   -- Closed
-  Curry :: (c x, c y, c z) => Reify c k (Tensor x y) z -> Reify c k x (Hom y z)
-  Uncurry :: (c x, c y, c z) => Reify c k x (Hom y z) -> Reify c k (Tensor x y) z
+  Curry :: Reify c k (Tensor x y) z -> Reify c k x (Hom y z)
+  Uncurry :: Reify c k x (Hom y z) -> Reify c k (Tensor x y) z
   -- Terminal
-  Kill :: (c x) => Reify c k x Unit
+  Kill :: Reify c k x Unit
   -- Constant
-  Const :: (c x) => x -> Reify c k Unit x
+  Const :: (c x) => x -> Reify c k y x
   -- Propagate
-  Choice :: (c x) => Reify c k (Tensor x x) x
-  Unify :: (c x) => Reify c k (Tensor x x) x
+  Choice :: Reify c k (Tensor x x) x
+  Unify :: Reify c k (Tensor x x) x
   -- Extension
   Other :: k c x y -> Reify c k x y
 
@@ -112,7 +112,7 @@ instance (c --> Show, forall a b. Show (k c a b)) => Show (Reify c k x y) where
           . showsPrec 11 x
 
 instance Category (Reify cs k) where
-  type Object (Reify cs k) = cs
+  type Object (Reify cs k) = Typeable
 
   (.) = Compose
   id = Identity
