@@ -105,7 +105,7 @@ interpret = \case
   Curry f -> curry (interpret f)
   Uncurry f -> uncurry (interpret f)
   Kill -> kill
-  Const x -> const x
+  Const x -> const_ x
   Choice -> choice
   Unify -> unify
 
@@ -114,7 +114,7 @@ genProgram =
   Gen.recursive
     Gen.choice
     [ pure id,
-      fmap const genSet
+      fmap const_ genSet
     ]
     [ Gen.subterm2 genProgram genProgram (.),
       Gen.subterm2 genProgram genProgram \x y -> exl . (x &&& y),
