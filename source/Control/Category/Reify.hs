@@ -16,6 +16,7 @@ where
 import Control.Category.Eq (HEq ((===)), Heterogeneous (Heterogeneous))
 import Control.Category.Hierarchy
 import Control.Category.Propagate (Propagate (choice, unify))
+import Data.Constraint.Extra (type (&&))
 import Data.Constraint.List (Dict (Dict), Elem, deduce)
 import Data.Kind (Constraint, Type)
 import GHC.Show (showSpace)

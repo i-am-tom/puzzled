@@ -10,6 +10,7 @@ where
 
 import Control.Category.Hierarchy
 import Control.Category.Propagate (Propagate (choice, unify))
+import Data.Constraint.Extra (type (&&))
 import Data.Kind (Type)
 import Prelude hiding (const, curry, id, uncurry, (.))
 

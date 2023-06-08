@@ -1,8 +1,5 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE UndecidableSuperClasses #-}
 
 -- |
 -- A class hierarchy for various types of category.
@@ -26,15 +23,12 @@ module Control.Category.Hierarchy
     -- * Lifting into Categories
     Const (..),
     const_,
-
-    -- * Utilities
-    Trivial,
-    type (&&),
   )
 where
 
 import Control.Arrow (Kleisli)
 import Control.Category qualified as Base
+import Data.Constraint.Extra (Trivial)
 import Data.Kind (Constraint, Type)
 import Prelude hiding (const, curry, id, uncurry, (.))
 
@@ -133,17 +127,3 @@ class (Terminal k) => Const k x where
 -- | Like 'const' but with an unrestricted domain.
 const_ :: (Const k x, Object k i, Object k Unit, Object k x) => x -> k i x
 const_ x = const x . kill
-
--------------------------------------------------------------------------------
-
--- | A trivial constraint satisfied by all types.
-type Trivial :: Type -> Constraint
-class Trivial x
-
-instance Trivial x
-
--- | Products of constraints.
-type (&&) :: (Type -> Constraint) -> (Type -> Constraint) -> Type -> Constraint
-class (c x, d x) => (c && d) x
-
-instance (c x, d x) => (c && d) x
