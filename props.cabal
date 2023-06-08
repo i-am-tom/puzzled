@@ -12,6 +12,7 @@ library
     Data.Constraint.Extra
     Data.Monoid.JoinSemilattice
     Data.Primitive.MutVar.Rollback
+    Propagator.Cell
     Propagator.Execute
   build-depends:
     , base

@@ -1,40 +1,33 @@
 {-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE UndecidableInstances #-}
 
-module Propagator.Execute
-  ( forwards,
-    backwards,
-    Value,
-    create,
-    unsafeRead,
-    watch,
-    write,
-    Execute (Execute),
-    Cell (..),
-  )
-where
+module Propagator.Execute where
 
-import Control.Applicative (Alternative (empty, (<|>)), liftA2)
-import Control.Arrow (Kleisli (Kleisli))
+import Control.Applicative (liftA2, (<|>), empty)
 import Control.Category.Hierarchy
 import Control.Category.Propagate (Propagate (..))
-import Control.Monad (MonadPlus, join)
+import Control.Category.Reify (Reify (..))
+import Control.Monad (MonadPlus)
 import Control.Monad.Primitive (PrimMonad)
+import Data.Boring (absurd)
+import Data.Constraint.Extra (type (&&))
 import Data.Kind (Type)
-import Data.Monoid.JoinSemilattice (JoinSemilattice (..), Merge (..))
-import Data.Primitive.MutVar (newMutVar, readMutVar)
-import Data.Primitive.MutVar.Rollback (Ref, atomicModifyMutVar)
+import Data.Monoid.JoinSemilattice (JoinSemilattice (..))
+import Propagator.Cell (Value, create, unsafeRead, watch, write)
+import Type.Reflection (Typeable)
 import Prelude hiding (const, id, read, (.))
 
 -- | Run an 'Execute' arrow with the given input, and return the output.
 forwards :: (MonadPlus m, PrimMonad m, JoinSemilattice i) => Execute m i o -> i -> m o
-forwards (Execute k) x = do
+forwards k x = do
   input <- create x
 
-  k (Object input) >>= \case
+  execute k (Object input) >>= \case
     Object ref -> unsafeRead ref
     Tensor _ _ -> empty
     Terminal -> empty
@@ -42,50 +35,14 @@ forwards (Execute k) x = do
 
 -- | Run an 'Execute' arrow with the given output, and return the input.
 backwards :: (MonadPlus m, PrimMonad m, JoinSemilattice i) => Execute m i o -> o -> m i
-backwards (Execute k) x = do
+backwards k x = do
   input <- create mempty
 
-  k (Object input) >>= \case
+  execute k (Object input) >>= \case
     Object ref -> write ref x *> unsafeRead input
     Tensor _ _ -> empty
     Terminal -> empty
     Morphism _ -> empty
-
----
-
--- | "Regular" (non-tensor, non-terminal, non-hom) values within our network
--- are stored in mutable variables. Over time, we may 'Merge' other values into
--- here, moving the result up the lattice.
-type Value :: (Type -> Type) -> Type -> Type
-newtype Value m x = Value (Ref m (x, m ()))
-  deriving newtype (Eq)
-
--- | Create a new value in a 'Value' wrapper.
-create :: (PrimMonad m) => x -> m (Value m x)
-create x = fmap Value do
-  newMutVar (x, pure ())
-
--- | Read the value within a 'Value' wrapper. This does not record provenance,
--- so this should not be used in any user code!
-unsafeRead :: (PrimMonad m) => Value m x -> m x
-unsafeRead (Value ref) = fmap fst (readMutVar ref)
-
--- | Attach a propagator to a 'Value' to fire whenever the value updates.
-watch :: (MonadPlus m, PrimMonad m, JoinSemilattice x) => Value m x -> (x -> m ()) -> m ()
-watch (Value ref) p = join $ atomicModifyMutVar ref \(x, ps) -> ((x, p' *> ps), p')
-  where
-    p' = readMutVar ref >>= p . fst
-
--- | Write information to a 'Value', firing its propagators if the value
--- changes.
-write :: (MonadPlus m, PrimMonad m, JoinSemilattice x) => Value m x -> x -> m ()
-write (Value ref) x = join do
-  atomicModifyMutVar ref \(y, ps) ->
-    case x <~ y of
-      Changed z -> ((z, ps), ps)
-      Unchanged _ -> ((x, ps), pure ())
-
----
 
 -- | Objects within the 'Execute' category.
 type Cell :: (Type -> Type) -> Type -> Type
@@ -97,59 +54,58 @@ data Cell m x where
   -- | Tensors.
   Tensor :: Cell m x -> Cell m y -> Cell m (Tensor x y)
   -- | Homomorphisms.
-  Morphism :: (Cell m x -> m (Cell m y)) -> Cell m (Hom x y)
+  Morphism :: Execute m x y -> Cell m (Hom x y)
 
--- | Eliminator for tensors.
-tensor :: (PrimMonad m) => (Cell m x -> Cell m y -> m r) -> Cell m (Tensor x y) -> m r
-tensor f = \case
-  Object v -> unsafeRead v >>= \case {}
-  Tensor x y -> f x y
+deriving stock instance Typeable m => Eq (Cell m x)
 
--- | Eliminator for morphisms.
-morphism :: (PrimMonad m) => ((Cell m x -> m (Cell m y)) -> m r) -> Cell m (Hom x y) -> m r
-morphism f = \case
-  Object v -> unsafeRead v >>= \case {}
-  Morphism k -> f k
+tensor :: PrimMonad m => Cell m (Tensor x y) -> (Cell m x -> Cell m y -> m r) -> m r
+tensor xs k = case xs of Tensor x y -> k x y; Object ref -> unsafeRead ref >>= absurd
 
--- | A category in which propagator computations can be executed over mutable
--- variables. We 'unify' via the 'JoinSemilattice' instance of the values.
+morphism :: PrimMonad m => Cell m (Hom x y) -> (Execute m x y -> m r) -> m r
+morphism xs k = case xs of Morphism f -> k f; Object ref -> unsafeRead ref >>= absurd
+
+type Partial :: (Type -> Type) -> Type -> Type -> Type
+data Partial m x y where
+  Embed :: Cell m x -> Partial m Unit x
+
+deriving stock instance Typeable m => Eq (Partial m x y)
+
 type Execute :: (Type -> Type) -> Type -> Type -> Type
-newtype Execute m i o = Execute_ (Kleisli m (Cell m i) (Cell m o))
+newtype Execute m x y = Execute (Reify (Eq && JoinSemilattice && Show) (Partial m) x y)
+  deriving newtype (Eq, Category, Cartesian, Closed, Terminal, Propagate)
 
-{-# COMPLETE Execute #-}
+instance (Eq x, JoinSemilattice x, Show x) => Const (Execute m) x where
+  const = Execute . const
 
-pattern Execute :: (Cell m i -> m (Cell m o)) -> Execute m i o
-pattern Execute k = Execute_ (Kleisli k)
+embed :: Cell m x -> Execute m Unit x
+embed = Execute . Other . Embed
 
-instance (Monad m) => Category (Execute m) where
-  Execute_ f . Execute_ g = Execute_ (f . g)
-  id = Execute_ id
+embed_ :: (Typeable x, Typeable y) => Cell m x -> Execute m y x
+embed_ x = embed x . kill
 
-instance (PrimMonad m) => Cartesian (Execute m) where
-  Execute f &&& Execute g = Execute \x ->
-    liftA2 Tensor (f x) (g x)
+execute :: forall m i o. (MonadPlus m, PrimMonad m) => Execute m i o -> Cell m i -> m (Cell m o)
+execute (Execute command) input = go input command
+  where
+    go :: Cell m x -> Reify (Eq && JoinSemilattice && Show) (Partial m) x y -> m (Cell m y)
+    go xs = \case
+      Compose f g -> go xs g >>= \y -> go y f
+      Identity -> pure xs
+      Fork f g -> liftA2 Tensor (go xs f) (go xs g)
+      Exl -> tensor xs \x _ -> pure x
+      Exr -> tensor xs \_ y -> pure y
+      Kill -> pure Terminal
+      Const x -> fmap Object (create x)
+      Curry f -> pure $ Morphism (Execute f . (embed_ xs &&& id))
+      Uncurry f -> tensor xs \x y -> go x f >>= flip morphism \(Execute k) -> go y k
+      Choice -> tensor xs \x y -> pure x <|> pure y
+      Other (Embed ref) -> pure ref
+      Unify -> tensor xs \x y -> do
+        let recurse :: Cell m x -> Cell m x -> m ()
+            recurse = \cases
+              Terminal Terminal -> pure ()
+              (Morphism _) (Morphism _) -> error "Unify morphisms?"
+              (Object a) (Object b) -> watch a (write b) *> watch b (write a)
+              (Tensor a b) (Tensor c d) -> recurse a c *> recurse b d
+              _ _ -> pure ()
 
-  exl = Execute (tensor \x _ -> pure x)
-  exr = Execute (tensor \_ y -> pure y)
-
-instance (PrimMonad m) => Closed (Execute m) where
-  curry (Execute f) = Execute \x ->
-    pure $ Morphism \y -> f (Tensor x y)
-
-  uncurry (Execute f) = Execute do
-    tensor \x y -> f x >>= morphism \k -> k y
-
-instance (Monad m) => Terminal (Execute m) where
-  kill = Execute \_ -> pure Terminal
-
-instance (PrimMonad m, JoinSemilattice x) => Const (Execute m) x where
-  const x = Execute \_ -> fmap Object (create x)
-
-instance (MonadFail m, MonadPlus m, PrimMonad m) => Propagate (Execute m) where
-  choice = Execute (tensor \x y -> pure x <|> pure y)
-  unify = Execute (tensor \x y -> x <$ go x y)
-    where
-      go :: Cell m x -> Cell m x -> m ()
-      go (Tensor x y) (Tensor z w) = go x z *> go y w
-      go (Object one) (Object two) = watch one (write two) *> watch two (write one)
-      go _ _ = fail "TODO: unify morphisms?"
+        x <$ recurse x y

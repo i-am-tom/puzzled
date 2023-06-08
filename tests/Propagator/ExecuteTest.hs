@@ -20,9 +20,11 @@ import Data.Set (Set)
 import Hedgehog
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
+import Prelude hiding (all, const, curry, id, uncurry, (.))
+import Propagator.Cell (unsafeRead)
 import Propagator.Execute
 import Test.Hspec (Spec, it, shouldBe)
-import Prelude hiding (all, const, curry, id, uncurry, (.))
+import Type.Reflection (Typeable)
 
 type Tester :: Type -> Type
 type Tester = Execute (BranchT IO) Unit
@@ -64,11 +66,7 @@ spec_execute = do
     run go >>= \output -> output `shouldBe` [[1], [2]]
 
 run :: (PrimMonad m) => Execute (BranchT m) Unit o -> m [o]
-run (Execute xs) =
-  all $
-    xs Terminal >>= \case
-      Object ref -> unsafeRead ref
-      _ -> empty
+run k = all $ execute k Terminal >>= \case Object ref -> unsafeRead ref; _ -> empty
 
 ---
 
@@ -95,7 +93,7 @@ fs =~= gs = do
 
 infix 5 =~=
 
-interpret :: (MonadFail m, PrimMonad m) => Reify Testable Void i o -> Execute (BranchT m) i o
+interpret :: (MonadFail m, PrimMonad m, Typeable i, Typeable o) => Reify Testable Void i o -> Execute (BranchT m) i o
 interpret = \case
   Compose f g -> interpret f . interpret g
   Identity -> id
