@@ -14,6 +14,7 @@ module Data.Constraint.Extra
 where
 
 import Data.Kind (Constraint, Type)
+import Data.Tuple (Solo)
 
 -- | A trivial constraint satisfied by all types.
 type Trivial :: Type -> Constraint
@@ -27,8 +28,9 @@ class (c x, d x) => (c && d) x
 
 instance (c x, d x) => (c && d) x
 
-class (forall x. c x => d x) => c --> d where
-  given :: c x => (d x => r) -> r
+type (-->) :: (Type -> Constraint) -> (Type -> Constraint) -> Constraint
+class (forall x. c x => d (Solo x)) => c --> d where
+  given :: c x => (d (Solo x) => r) -> r
 
-instance (forall x. c x => d x) => c --> d where
+instance (forall x. c x => d (Solo x)) => c --> d where
   given x = x

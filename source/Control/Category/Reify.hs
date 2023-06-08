@@ -13,11 +13,11 @@ module Control.Category.Reify
   )
 where
 
-import Control.Category.Eq (HEq ((===)), Heterogeneous (Heterogeneous))
+import Data.Tuple (Solo (..))
+import Control.Category.Eq (HEq ((===)))
 import Control.Category.Hierarchy
 import Control.Category.Propagate (Propagate (choice, unify))
-import Data.Constraint.Extra (type (&&))
-import Data.Constraint.List (Dict (Dict), Elem, deduce)
+import Data.Constraint.Extra (type (-->), type (&&))
 import Data.Kind (Constraint, Type)
 import GHC.Show (showSpace)
 import Type.Reflection (Typeable, eqTypeRep, typeOf, (:~~:) (HRefl))
@@ -48,13 +48,10 @@ data Reify c k x y where
   -- Extension
   Other :: k c x y -> Reify c k x y
 
-deriving via
-  (Heterogeneous (Reify c k) x y)
-  instance
-    (Elem (Eq && Typeable) c, HEq (k c)) =>
-    Eq (Reify c k x y)
+instance (c --> (Eq && Typeable), HEq (k c)) => Eq (Reify c k x y) where
+  (==) = (===)
 
-instance (Elem (Eq && Typeable) c, HEq (k c)) => HEq (Reify c k) where
+instance (c --> (Eq && Typeable), HEq (k c)) => HEq (Reify c k) where
   (===) = \cases
     (Compose fx fy) (Compose gx gy) -> fx === gx && fy === gy
     Identity Identity -> True
@@ -64,21 +61,19 @@ instance (Elem (Eq && Typeable) c, HEq (k c)) => HEq (Reify c k) where
     (Curry x) (Curry y) -> x === y
     (Uncurry x) (Uncurry y) -> x === y
     Kill Kill -> True
-    (Const x) (Const y)
-      | Dict <- deduce @(Eq && Typeable) @c x,
-        Dict <- deduce @(Eq && Typeable) @c y -> do
-          case eqTypeRep (typeOf x) (typeOf y) of
-            Just HRefl -> x == y
-            Nothing -> False
+    (Const x) (Const y) -> do
+      let x' = Solo x
+          y' = Solo y
+
+      case eqTypeRep (typeOf x') (typeOf y') of
+          Just HRefl -> x' == y'
+          Nothing -> False
     Choice Choice -> True
     Unify Unify -> True
     (Other x) (Other y) -> x === y
     _ _ -> False
 
-instance
-  (Elem Show c, forall a b. Show (k c a b)) =>
-  Show (Reify c k x y)
-  where
+instance (c --> Show, forall a b. Show (k c a b)) => Show (Reify c k x y) where
   showsPrec p = \case
     Compose f g ->
       showParen (p >= 11) $
@@ -105,11 +100,10 @@ instance
         showString "Uncurry "
           . showsPrec 11 f
     Kill -> showString "Kill"
-    Const x
-      | Dict <- deduce @Show @c x ->
-          showParen (p >= 11) $
-            showString "Const "
-              . showsPrec 11 x
+    Const x ->
+      showParen (p >= 11) $
+        showString "Const "
+          . showsPrec 11 (Solo x)
     Choice -> showString "Choice"
     Unify -> showString "Unify"
     Other x ->
