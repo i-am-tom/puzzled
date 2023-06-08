@@ -13,7 +13,6 @@ library
     Control.Category.Reify
     Control.Monad.Branch
     Data.Constraint.Extra
-    Data.Constraint.List
     Data.Monoid.JoinSemilattice
     Data.Primitive.MutVar.Rollback
     Propagator.Execute
