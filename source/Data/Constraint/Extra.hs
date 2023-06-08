@@ -8,7 +8,6 @@
 module Data.Constraint.Extra
   ( type (&&),
     Trivial,
-
     type (-->) (..),
   )
 where
@@ -29,8 +28,8 @@ class (c x, d x) => (c && d) x
 instance (c x, d x) => (c && d) x
 
 type (-->) :: (Type -> Constraint) -> (Type -> Constraint) -> Constraint
-class (forall x. c x => d (Solo x)) => c --> d where
-  given :: c x => (d (Solo x) => r) -> r
+class (forall x. (c x) => d (Solo x)) => c --> d where
+  given :: (c x) => ((d (Solo x)) => r) -> r
 
-instance (forall x. c x => d (Solo x)) => c --> d where
+instance (forall x. (c x) => d (Solo x)) => c --> d where
   given x = x

@@ -9,11 +9,11 @@ module Propagator.ExecuteTest where
 
 import Control.Applicative (Alternative (empty))
 import Control.Category.Hierarchy
-import Data.Constraint.Extra (type (&&))
 import Control.Category.Propagate (Propagate (choice, unify))
 import Control.Category.Reify (Reify (..), Void)
 import Control.Monad.Branch (BranchT, all)
 import Control.Monad.Primitive (PrimMonad)
+import Data.Constraint.Extra (type (&&))
 import Data.Kind (Constraint, Type)
 import Data.Monoid.JoinSemilattice (JoinSemilattice)
 import Data.Set (Set)
