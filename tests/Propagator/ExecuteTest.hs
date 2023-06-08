@@ -28,13 +28,13 @@ type Tester = Execute (BranchT IO) Unit
 
 spec_execute :: Spec
 spec_execute = do
-  it "x = 5; x = ?" do
+  it "x = 'a'; x = ?" do
     let go :: Tester (Set Char)
         go = const ['a']
 
     run go >>= \output -> output `shouldBe` [['a']]
 
-  it "x = 5; x = y; y = ?" do
+  it "x = 'a'; x = y; y = ?" do
     let go :: Tester (Set Char)
         go = exr . (unify &&& exr) . (const ['a'] &&& const mempty)
     -- \^ exr . (unify &&& exr) means we explicitly check the unknown
@@ -42,7 +42,7 @@ spec_execute = do
 
     run go >>= \output -> output `shouldBe` [['a']]
 
-  it "x ⊂ 5; x = y; y = z; z ⊂ ?" do
+  it "x ⊂ 'a'; x = y; y = z; z ⊂ ?" do
     let go :: Tester (Set Char)
         go = unify . ((unify . exl) &&& exr) . (const ['a'] &&& const mempty &&& const mempty)
     -- \^ Assuming the above test worked, we don't do the same dance as
