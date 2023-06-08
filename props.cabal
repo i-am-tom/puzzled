@@ -5,7 +5,6 @@ license: MIT
 
 library
   exposed-modules:
-    Control.Category.Eq
     Control.Category.Hierarchy
     Control.Category.Propagate
     Control.Category.Reify

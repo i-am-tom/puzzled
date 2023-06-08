@@ -10,7 +10,7 @@ module Propagator.ExecuteTest where
 import Control.Applicative (Alternative (empty))
 import Control.Category.Hierarchy
 import Control.Category.Propagate (Propagate (choice, unify))
-import Control.Category.Reify (Reify (..), Void)
+import Control.Category.Reify (Reify (..))
 import Control.Monad.Branch (BranchT, all)
 import Control.Monad.Primitive (PrimMonad)
 import Data.Constraint.Extra (type (&&))
@@ -82,8 +82,8 @@ type Testable = JoinSemilattice && Eq && Show
 -- same input, and compare the outputs.
 (=~=) ::
   (PrimMonad m) =>
-  Reify Testable Void (Set Char) (Set Char) ->
-  Reify Testable Void (Set Char) (Set Char) ->
+  Reify Testable (Set Char) (Set Char) ->
+  Reify Testable (Set Char) (Set Char) ->
   PropertyT m ()
 fs =~= gs = do
   x <- forAll genSet
@@ -95,7 +95,7 @@ fs =~= gs = do
 
 infix 5 =~=
 
-interpret :: (MonadFail m, PrimMonad m) => Reify Testable Void i o -> Execute (BranchT m) i o
+interpret :: (MonadFail m, PrimMonad m) => Reify Testable i o -> Execute (BranchT m) i o
 interpret = \case
   Compose f g -> interpret f . interpret g
   Identity -> id
@@ -108,9 +108,8 @@ interpret = \case
   Const x -> const x
   Choice -> choice
   Unify -> unify
-  Other x -> case x of {}
 
-genProgram :: Gen (Reify Testable Void (Set Char) (Set Char))
+genProgram :: Gen (Reify Testable (Set Char) (Set Char))
 genProgram =
   Gen.recursive
     Gen.choice
