@@ -8,7 +8,7 @@
 module Data.Constraint.Extra
   ( type (&&),
     Trivial,
-    type (~>) (..),
+    type (~>),
   )
 where
 
@@ -33,10 +33,4 @@ instance (c x, d x) => (c && d) x
 --
 -- https://gitlab.haskell.org/ghc/ghc/-/issues/15636
 type (~>) :: (Type -> Constraint) -> (Type -> Constraint) -> Constraint
-class (forall x. (c x) => d (Solo x)) => c ~> d where
-  -- | If we can produce @r@ given @d@, then we should be able to produce it
-  -- given @c@ too.
-  given :: (c x) => ((d (Solo x)) => r) -> r
-
-instance (forall x. (c x) => d (Solo x)) => c ~> d where
-  given x = x
+type c ~> d = forall x. (c x) => d (Solo x)
