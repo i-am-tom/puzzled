@@ -8,7 +8,7 @@
 module Data.Constraint.Extra
   ( type (&&),
     Trivial,
-    type (-->) (..),
+    type (~>) (..),
   )
 where
 
@@ -27,9 +27,16 @@ class (c x, d x) => (c && d) x
 
 instance (c x, d x) => (c && d) x
 
-type (-->) :: (Type -> Constraint) -> (Type -> Constraint) -> Constraint
-class (forall x. (c x) => d (Solo x)) => c --> d where
+-- | A constraint that witnesses a constraint implication. It would be really
+-- nice not to have 'Solo' here - in fact, it would be nice not to have this
+-- class at all - but no dice:
+--
+-- https://gitlab.haskell.org/ghc/ghc/-/issues/15636
+type (~>) :: (Type -> Constraint) -> (Type -> Constraint) -> Constraint
+class (forall x. (c x) => d (Solo x)) => c ~> d where
+  -- | If we can produce @r@ given @d@, then we should be able to produce it
+  -- given @c@ too.
   given :: (c x) => ((d (Solo x)) => r) -> r
 
-instance (forall x. (c x) => d (Solo x)) => c --> d where
+instance (forall x. (c x) => d (Solo x)) => c ~> d where
   given x = x

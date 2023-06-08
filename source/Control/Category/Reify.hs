@@ -14,7 +14,7 @@ where
 
 import Control.Category.Hierarchy
 import Control.Category.Propagate (Propagate (choice, unify))
-import Data.Constraint.Extra (type (-->))
+import Data.Constraint.Extra (type (~>))
 import Data.Kind (Constraint, Type)
 import Data.Tuple (Solo (..))
 import GHC.Show (showSpace)
@@ -44,7 +44,7 @@ data Reify c x y where
   Choice :: (Typeable x) => Reify c (Tensor x x) x
   Unify :: (Typeable x) => Reify c (Tensor x x) x
 
-instance (c --> Eq, Typeable c) => Eq (Reify c x y) where
+instance (c ~> Eq, Typeable c) => Eq (Reify c x y) where
   (==) = \cases
     (Compose fx fy) (Compose gx gy) ->
       case eqTypeRep (typeOf fx) (typeOf gx) of
@@ -62,7 +62,7 @@ instance (c --> Eq, Typeable c) => Eq (Reify c x y) where
     Unify Unify -> True
     _ _ -> False
 
-instance (c --> Show) => Show (Reify c x y) where
+instance (c ~> Show) => Show (Reify c x y) where
   showsPrec p = \case
     Compose f g ->
       showParen (p >= 11) $
