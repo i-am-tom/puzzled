@@ -9,6 +9,7 @@
 -- The category of reified category operations.
 module Control.Category.Reify
   ( Reify (..),
+    Void,
   )
 where
 
@@ -24,27 +25,29 @@ import Prelude hiding ((.))
 -- | A category that implements the hierarchy by reifying all functions as
 -- constructors in this GADT. This is useful because we can use it to observe
 -- the structure of a computation.
-type Reify :: (Type -> Constraint) -> Type -> Type -> Type
-data Reify c x y where
+type Reify :: (Type -> Constraint) -> (Type -> Type -> Type) -> Type -> Type -> Type
+data Reify c k x y where
   -- Category
-  Compose :: (Typeable x, Typeable y, Typeable z) => Reify c y z -> Reify c x y -> Reify c x z
-  Identity :: (Typeable x) => Reify c x x
+  Compose :: (Typeable x, Typeable y, Typeable z) => Reify c k y z -> Reify c k x y -> Reify c k x z
+  Identity :: (Typeable x) => Reify c k x x
   -- Cartesian
-  Fork :: (Typeable x, Typeable y, Typeable z) => Reify c x y -> Reify c x z -> Reify c x (Tensor y z)
-  Exl :: (Typeable x, Typeable y) => Reify c (Tensor x y) x
-  Exr :: (Typeable x, Typeable y) => Reify c (Tensor x y) y
+  Fork :: (Typeable x, Typeable y, Typeable z) => Reify c k x y -> Reify c k x z -> Reify c k x (Tensor y z)
+  Exl :: (Typeable x, Typeable y) => Reify c k (Tensor x y) x
+  Exr :: (Typeable x, Typeable y) => Reify c k (Tensor x y) y
   -- Closed
-  Curry :: (Typeable x, Typeable y, Typeable z) => Reify c (Tensor x y) z -> Reify c x (Hom y z)
-  Uncurry :: (Typeable x, Typeable y, Typeable z) => Reify c x (Hom y z) -> Reify c (Tensor x y) z
+  Curry :: (Typeable x, Typeable y, Typeable z) => Reify c k (Tensor x y) z -> Reify c k x (Hom y z)
+  Uncurry :: (Typeable x, Typeable y, Typeable z) => Reify c k x (Hom y z) -> Reify c k (Tensor x y) z
   -- Terminal
-  Kill :: (Typeable x) => Reify c x Unit
+  Kill :: (Typeable x) => Reify c k x Unit
   -- Constant
-  Const :: (c x) => x -> Reify c y x
+  Const :: (c x) => x -> Reify c k y x
   -- Propagate
-  Choice :: (Typeable x) => Reify c (Tensor x x) x
-  Unify :: (Typeable x) => Reify c (Tensor x x) x
+  Choice :: (Typeable x) => Reify c k (Tensor x x) x
+  Unify :: (Typeable x) => Reify c k (Tensor x x) x
+  -- Extension
+  Other :: k x y -> Reify c k x y
 
-instance (c ~> Eq, Typeable c) => Eq (Reify c x y) where
+instance (c ~> Eq, Typeable k, Typeable c) => Eq (Reify c k x y) where
   (==) = \cases
     (Compose fx fy) (Compose gx gy) ->
       case eqTypeRep (typeOf fx) (typeOf gx) of
@@ -62,7 +65,8 @@ instance (c ~> Eq, Typeable c) => Eq (Reify c x y) where
     Unify Unify -> True
     _ _ -> False
 
-instance (c ~> Show) => Show (Reify c x y) where
+instance (c ~> Show, forall a b. Show (k a b))
+    => Show (Reify c k x y) where
   showsPrec p = \case
     Compose f g ->
       showParen (p >= 11) $
@@ -95,28 +99,37 @@ instance (c ~> Show) => Show (Reify c x y) where
           . showsPrec 11 (Solo x)
     Choice -> showString "Choice"
     Unify -> showString "Unify"
+    Other k ->
+      showParen (p >= 11) $
+        showString "Other "
+          . showsPrec 11 k
 
-instance Category (Reify c) where
-  type Object (Reify c) = Typeable
+instance Category (Reify c k) where
+  type Object (Reify c k) = Typeable
 
   (.) = Compose
   id = Identity
 
-instance Cartesian (Reify c) where
+instance Cartesian (Reify c k) where
   (&&&) = Fork
   exl = Exl
   exr = Exr
 
-instance Closed (Reify c) where
+instance Closed (Reify c k) where
   curry = Curry
   uncurry = Uncurry
 
-instance Terminal (Reify c) where
+instance Terminal (Reify c k) where
   kill = Kill
 
-instance (c x) => Const (Reify c) x where
+instance (c x) => Const (Reify c k) x where
   const = Const
 
-instance Propagate (Reify c) where
+instance Propagate (Reify c k) where
   choice = Choice
   unify = Unify
+
+-- | A void category that can be used to instantiate a version of 'Reify' with
+-- no extensions.
+type Void :: Type -> Type -> Type
+data Void x y deriving stock (Eq, Ord, Show)
