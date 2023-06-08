@@ -7,7 +7,6 @@ library
   exposed-modules:
     Control.Category.Eq
     Control.Category.Hierarchy
-    Control.Category.Lifted
     Control.Category.Product
     Control.Category.Propagate
     Control.Category.Reify
