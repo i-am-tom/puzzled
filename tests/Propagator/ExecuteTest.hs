@@ -7,6 +7,7 @@
 
 module Propagator.ExecuteTest where
 
+import Data.Boring (absurd)
 import Control.Applicative (Alternative (empty))
 import Control.Category.Hierarchy
 import Control.Category.Propagate (Propagate (choice, unify))
@@ -106,7 +107,7 @@ interpret = \case
   Const x -> const_ x
   Choice -> choice
   Unify -> unify
-  Other v -> case v of {}
+  Other v -> absurd v
 
 genProgram :: Gen (Reify Testable Void (Set Char) (Set Char))
 genProgram =

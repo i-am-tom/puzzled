@@ -15,6 +15,7 @@ where
 
 import Control.Category.Hierarchy
 import Control.Category.Propagate (Propagate (choice, unify))
+import Data.Boring (Absurd (absurd))
 import Data.Constraint.Extra (type (~>))
 import Data.Kind (Constraint, Type)
 import Data.Tuple (Solo (..))
@@ -133,3 +134,6 @@ instance Propagate (Reify c k) where
 -- no extensions.
 type Void :: Type -> Type -> Type
 data Void x y deriving stock (Eq, Ord, Show)
+
+instance Absurd (Void x y) where
+  absurd = \case {}

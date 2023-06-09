@@ -33,6 +33,7 @@ test-suite puzzled-tests
   main-is: Driver.hs
   build-depends:
     , base
+    , boring
     , containers
     , hedgehog
     , hspec
