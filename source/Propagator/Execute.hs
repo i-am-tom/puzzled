@@ -74,7 +74,7 @@ deriving stock instance (Typeable m) => Eq (Partial m x y)
 
 type Execute :: (Type -> Type) -> Type -> Type -> Type
 newtype Execute m x y = Execute (Reify (Eq && JoinSemilattice && Show) (Partial m) x y)
-  deriving newtype (Eq, Category, Cartesian, Closed, Terminal, Propagate)
+  deriving newtype (Category, Cartesian, Closed, Eq, Propagate, Terminal)
 
 instance (Eq x, JoinSemilattice x, Show x) => Const (Execute m) x where
   const = Execute . const
