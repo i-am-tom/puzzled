@@ -15,7 +15,7 @@ import Control.Category.Hierarchy
 import Control.Category.Propagate (Propagate (..))
 import Control.Category.Reify (Reify (..))
 import Control.Monad (MonadPlus)
-import Control.Monad.Primitive (PrimMonad)
+import Control.Monad.Primitive (PrimMonad (PrimState), RealWorld)
 import Data.Boring (absurd)
 import Data.Constraint.Extra (type (&&))
 import Data.Kind (Type)
@@ -25,7 +25,7 @@ import Type.Reflection (Typeable)
 import Prelude hiding (const, id, read, (.))
 
 -- | Run an 'Execute' arrow with the given input, and return the output.
-forwards :: (MonadPlus m, PrimMonad m, JoinSemilattice i) => Execute m i o -> i -> m o
+forwards :: (MonadPlus m, PrimMonad m, PrimState m ~ RealWorld, JoinSemilattice i) => Execute m i o -> i -> m o
 forwards k x = do
   input <- create x
 
@@ -36,7 +36,7 @@ forwards k x = do
     Morphism _ -> empty
 
 -- | Run an 'Execute' arrow with the given output, and return the input.
-backwards :: (MonadPlus m, PrimMonad m, JoinSemilattice i) => Execute m i o -> o -> m i
+backwards :: (MonadPlus m, PrimMonad m, PrimState m ~ RealWorld, JoinSemilattice i) => Execute m i o -> o -> m i
 backwards k x = do
   input <- create mempty
 
@@ -60,10 +60,10 @@ data Cell m x where
 
 deriving stock instance (Typeable m) => Eq (Cell m x)
 
-tensor :: (PrimMonad m) => Cell m (Tensor x y) -> (Cell m x -> Cell m y -> m r) -> m r
+tensor :: (PrimMonad m, PrimState m ~ RealWorld) => Cell m (Tensor x y) -> (Cell m x -> Cell m y -> m r) -> m r
 tensor xs k = case xs of Tensor x y -> k x y; Object ref -> unsafeRead ref >>= absurd
 
-morphism :: (PrimMonad m) => Cell m (Hom x y) -> (Execute m x y -> m r) -> m r
+morphism :: (PrimMonad m, PrimState m ~ RealWorld) => Cell m (Hom x y) -> (Execute m x y -> m r) -> m r
 morphism xs k = case xs of Morphism f -> k f; Object ref -> unsafeRead ref >>= absurd
 
 type Partial :: (Type -> Type) -> Type -> Type -> Type
@@ -85,7 +85,7 @@ embed = Execute . Other . Embed
 embed_ :: (Typeable x, Typeable y) => Cell m x -> Execute m y x
 embed_ x = embed x . kill
 
-execute :: forall m i o. (MonadPlus m, PrimMonad m) => Execute m i o -> Cell m i -> m (Cell m o)
+execute :: forall m i o. (MonadPlus m, PrimMonad m, PrimState m ~ RealWorld) => Execute m i o -> Cell m i -> m (Cell m o)
 execute (Execute command) input = go input command
   where
     go :: Cell m x -> Reify (Eq && JoinSemilattice && Show) (Partial m) x y -> m (Cell m y)

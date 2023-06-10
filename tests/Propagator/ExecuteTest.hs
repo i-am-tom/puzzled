@@ -12,7 +12,7 @@ import Control.Category.Hierarchy
 import Control.Category.Propagate (Propagate (choice, unify))
 import Control.Category.Reify (Reify (..), Void)
 import Control.Monad.Branch (BranchT, all)
-import Control.Monad.Primitive (PrimMonad)
+import Control.Monad.Primitive (PrimMonad (PrimState), RealWorld)
 import Data.Boring (absurd)
 import Data.Constraint.Extra (type (&&))
 import Data.Kind (Constraint, Type)
@@ -66,7 +66,7 @@ spec_execute = do
 
     run go >>= \output -> output `shouldBe` [[1], [2]]
 
-run :: (PrimMonad m) => Execute (BranchT m) Unit o -> m [o]
+run :: (PrimMonad m, PrimState m ~ RealWorld) => Execute (BranchT m) Unit o -> m [o]
 run k = all $ execute k Terminal >>= \case Object ref -> unsafeRead ref; _ -> empty
 
 ---
@@ -80,7 +80,7 @@ type Testable = JoinSemilattice && Eq && Show
 -- | The easiest way to check for equality is to run both programs with the
 -- same input, and compare the outputs.
 (=~=) ::
-  (PrimMonad m) =>
+  (PrimMonad m, PrimState m ~ RealWorld) =>
   Reify Testable Void (Set Char) (Set Char) ->
   Reify Testable Void (Set Char) (Set Char) ->
   PropertyT m ()

@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- |
 -- Mutable variable operations with rollback.
@@ -27,17 +28,17 @@ where
 
 import Control.Applicative (empty, (<|>))
 import Control.Monad (MonadPlus, join)
-import Control.Monad.Primitive (PrimMonad (PrimState))
+import Control.Monad.Primitive (PrimMonad (PrimState), RealWorld)
 import Data.Kind (Type)
 import Data.Primitive.MutVar qualified as Primitive
 
 -- | A shorthand for mutable variables.
-type Ref :: (Type -> Type) -> Type -> Type
-type Ref m = Primitive.MutVar (PrimState m)
+type Ref :: Type -> Type
+type Ref = Primitive.MutVar RealWorld
 
 -- | Atomically and strictly modify a mutable variable in the first "branch",
 -- and undo the modification in the second "branch".
-atomicModifyMutVar :: (MonadPlus m, PrimMonad m) => Ref m x -> (x -> (x, r)) -> m r
+atomicModifyMutVar :: (MonadPlus m, PrimMonad m, PrimState m ~ RealWorld) => Ref x -> (x -> (x, r)) -> m r
 atomicModifyMutVar ref k = join do
   Primitive.atomicModifyMutVar' ref \x -> do
     let rollback = Primitive.atomicModifyMutVar' ref \_ -> (x, ())
@@ -45,5 +46,5 @@ atomicModifyMutVar ref k = join do
 
 -- | Atomically and strictly write a value to a 'MutVar' with the same rollback
 -- mechanism as described for 'atomicModifyMutVar'.
-writeMutVar :: (MonadPlus m, PrimMonad m) => Ref m x -> x -> m ()
+writeMutVar :: (MonadPlus m, PrimMonad m, PrimState m ~ RealWorld) => Ref x -> x -> m ()
 writeMutVar ref x = atomicModifyMutVar ref \_ -> (x, ())
