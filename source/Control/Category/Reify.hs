@@ -49,7 +49,8 @@ data Reify c k x y where
   -- Extension
   Other :: k x y -> Reify c k x y
 
-instance (c ~> Eq, Typeable k, Typeable c) => Eq (Reify c k x y) where
+instance (c ~> Eq, forall a b. Eq (k a b), Typeable k, Typeable c)
+    => Eq (Reify c k x y) where
   xs == ys = case (xs, ys) of
     (Compose fx fy, Compose gx gy) ->
       case eqTypeRep (typeOf fx) (typeOf gx) of
@@ -75,6 +76,8 @@ instance (c ~> Eq, Typeable k, Typeable c) => Eq (Reify c k x y) where
       True
     (Unify, Unify) ->
       True
+    (Other x, Other y) ->
+      x == y
     _ ->
       False
 
