@@ -1,3 +1,4 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PartialTypeSignatures #-}
@@ -49,25 +50,38 @@ data Reify c k x y where
   Other :: k x y -> Reify c k x y
 
 instance (c ~> Eq, Typeable k, Typeable c) => Eq (Reify c k x y) where
-  (==) = \cases
-    (Compose fx fy) (Compose gx gy) ->
+  xs == ys = case (xs, ys) of
+    (Compose fx fy, Compose gx gy) ->
       case eqTypeRep (typeOf fx) (typeOf gx) of
         Just HRefl -> fx == gx && fy == gy
         Nothing -> False
-    Identity Identity -> True
-    (Fork x y) (Fork z w) -> x == z && y == w
-    Exl Exl -> True
-    Exr Exr -> True
-    (Curry x) (Curry y) -> x == y
-    (Uncurry x) (Uncurry y) -> x == y
-    Kill Kill -> True
-    (Const x) (Const y) -> Solo x == Solo y
-    Choice Choice -> True
-    Unify Unify -> True
-    _ _ -> False
+    (Identity, Identity) ->
+      True
+    (Fork x y, Fork z w) ->
+      x == z && y == w
+    (Exl, Exl) ->
+      True
+    (Exr, Exr) ->
+      True
+    (Curry x, Curry y) ->
+      x == y
+    (Uncurry x, Uncurry y) ->
+      x == y
+    (Kill, Kill) ->
+      True
+    (Const x, Const y) ->
+      Solo x == Solo y
+    (Choice, Choice) ->
+      True
+    (Unify, Unify) ->
+      True
+    _ ->
+      False
 
-instance (c ~> Show, forall a b. Show (k a b))
-    => Show (Reify c k x y) where
+instance
+  (c ~> Show, forall a b. Show (k a b)) =>
+  Show (Reify c k x y)
+  where
   showsPrec p = \case
     Compose f g ->
       showParen (p >= 11) $

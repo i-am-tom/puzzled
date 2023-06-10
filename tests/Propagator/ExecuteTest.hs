@@ -7,13 +7,13 @@
 
 module Propagator.ExecuteTest where
 
-import Data.Boring (absurd)
 import Control.Applicative (Alternative (empty))
 import Control.Category.Hierarchy
 import Control.Category.Propagate (Propagate (choice, unify))
 import Control.Category.Reify (Reify (..), Void)
 import Control.Monad.Branch (BranchT, all)
 import Control.Monad.Primitive (PrimMonad)
+import Data.Boring (absurd)
 import Data.Constraint.Extra (type (&&))
 import Data.Kind (Constraint, Type)
 import Data.Monoid.JoinSemilattice (JoinSemilattice)
@@ -21,11 +21,11 @@ import Data.Set (Set)
 import Hedgehog
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
-import Prelude hiding (all, const, curry, id, uncurry, (.))
 import Propagator.Cell (unsafeRead)
 import Propagator.Execute
 import Test.Hspec (Spec, it, shouldBe)
 import Type.Reflection (Typeable)
+import Prelude hiding (all, const, curry, id, uncurry, (.))
 
 type Tester :: Type -> Type
 type Tester = Execute (BranchT IO) Unit

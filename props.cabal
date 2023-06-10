@@ -22,7 +22,9 @@ library
     , primitive
     , transformers
   default-language: GHC2021
-  ghc-options: -Wall -Wextra
+  ghc-options:
+    -Wall
+    -Wextra
   hs-source-dirs: source
 
 test-suite puzzled-tests

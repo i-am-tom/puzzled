@@ -1,14 +1,16 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Propagator.Execute where
 
-import Control.Applicative (liftA2, (<|>), empty)
+import Control.Applicative (empty, liftA2, (<|>))
 import Control.Category.Hierarchy
 import Control.Category.Propagate (Propagate (..))
 import Control.Category.Reify (Reify (..))
@@ -56,19 +58,19 @@ data Cell m x where
   -- | Homomorphisms.
   Morphism :: Execute m x y -> Cell m (Hom x y)
 
-deriving stock instance Typeable m => Eq (Cell m x)
+deriving stock instance (Typeable m) => Eq (Cell m x)
 
-tensor :: PrimMonad m => Cell m (Tensor x y) -> (Cell m x -> Cell m y -> m r) -> m r
+tensor :: (PrimMonad m) => Cell m (Tensor x y) -> (Cell m x -> Cell m y -> m r) -> m r
 tensor xs k = case xs of Tensor x y -> k x y; Object ref -> unsafeRead ref >>= absurd
 
-morphism :: PrimMonad m => Cell m (Hom x y) -> (Execute m x y -> m r) -> m r
+morphism :: (PrimMonad m) => Cell m (Hom x y) -> (Execute m x y -> m r) -> m r
 morphism xs k = case xs of Morphism f -> k f; Object ref -> unsafeRead ref >>= absurd
 
 type Partial :: (Type -> Type) -> Type -> Type -> Type
 data Partial m x y where
   Embed :: Cell m x -> Partial m Unit x
 
-deriving stock instance Typeable m => Eq (Partial m x y)
+deriving stock instance (Typeable m) => Eq (Partial m x y)
 
 type Execute :: (Type -> Type) -> Type -> Type -> Type
 newtype Execute m x y = Execute (Reify (Eq && JoinSemilattice && Show) (Partial m) x y)
@@ -101,11 +103,17 @@ execute (Execute command) input = go input command
       Other (Embed ref) -> pure ref
       Unify -> tensor xs \x y -> do
         let recurse :: Cell m x -> Cell m x -> m ()
-            recurse = \cases
-              Terminal Terminal -> pure ()
-              (Morphism _) (Morphism _) -> error "Unify morphisms?"
-              (Object a) (Object b) -> watch a (write b) *> watch b (write a)
-              (Tensor a b) (Tensor c d) -> recurse a c *> recurse b d
-              _ _ -> pure ()
+            recurse as bs = case (as, bs) of
+              (Terminal, Terminal) ->
+                pure ()
+              (Morphism _, Morphism _) ->
+                error "Unify morphisms?"
+              (Object a, Object b) -> do
+                watch a (write b)
+                watch b (write a)
+              (Tensor a b, Tensor c d) ->
+                recurse a c *> recurse b d
+              _ ->
+                pure ()
 
         x <$ recurse x y
