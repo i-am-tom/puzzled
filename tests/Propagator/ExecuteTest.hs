@@ -15,17 +15,18 @@ import Control.Monad.Branch (BranchT, all)
 import Control.Monad.Primitive (PrimMonad (PrimState), RealWorld)
 import Data.Boring (absurd)
 import Data.Constraint.Extra (type (&&))
+import Data.Hashable (Hashable)
 import Data.Kind (Constraint, Type)
 import Data.Monoid.JoinSemilattice (JoinSemilattice)
 import Data.Set (Set)
 import Hedgehog
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
+import Prelude hiding (all, const, curry, id, uncurry, (.))
 import Propagator.Cell (unsafeRead)
 import Propagator.Execute
 import Test.Hspec (Spec, it, shouldBe)
 import Type.Reflection (Typeable)
-import Prelude hiding (all, const, curry, id, uncurry, (.))
 
 type Tester :: Type -> Type
 type Tester = Execute (BranchT IO) Unit
@@ -75,7 +76,7 @@ genSet :: Gen (Set Char)
 genSet = Gen.set (Range.linear 0 10) Gen.alphaNum
 
 type Testable :: Type -> Constraint
-type Testable = JoinSemilattice && Eq && Show
+type Testable = Eq && Hashable && JoinSemilattice && Show
 
 -- | The easiest way to check for equality is to run both programs with the
 -- same input, and compare the outputs.

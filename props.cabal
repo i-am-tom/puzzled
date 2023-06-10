@@ -18,6 +18,7 @@ library
     , base
     , boring
     , containers
+    , hashable
     , logict
     , primitive
     , transformers
@@ -37,6 +38,7 @@ test-suite puzzled-tests
     , base
     , boring
     , containers
+    , hashable
     , hedgehog
     , hspec
     , logict

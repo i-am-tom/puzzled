@@ -18,11 +18,13 @@ import Control.Monad (MonadPlus)
 import Control.Monad.Primitive (PrimMonad (PrimState), RealWorld)
 import Data.Boring (absurd)
 import Data.Constraint.Extra (type (&&))
+import Data.Hashable (Hashable (hashWithSalt))
 import Data.Kind (Type)
 import Data.Monoid.JoinSemilattice (JoinSemilattice (..))
+import Data.Semigroup (Arg (Arg))
+import Prelude hiding (const, id, read, (.))
 import Propagator.Cell (Value, create, unsafeRead, watch, write)
 import Type.Reflection (Typeable)
-import Prelude hiding (const, id, read, (.))
 
 -- | Run an 'Execute' arrow with the given input, and return the output.
 forwards :: (MonadPlus m, PrimMonad m, PrimState m ~ RealWorld, JoinSemilattice i) => Execute m i o -> i -> m o
@@ -60,6 +62,13 @@ data Cell m x where
 
 deriving stock instance (Typeable m) => Eq (Cell m x)
 
+instance (Typeable m) => Hashable (Cell m x) where
+  hashWithSalt salt = \case
+    Terminal -> salt `hashWithSalt` (0 :: Int)
+    Object (Arg i _) -> salt `hashWithSalt` (1 :: Int) `hashWithSalt` i
+    Tensor x y -> salt `hashWithSalt` (2 :: Int) `hashWithSalt` x `hashWithSalt` y
+    Morphism f -> salt `hashWithSalt` (3 :: Int) `hashWithSalt` f
+
 tensor :: (PrimMonad m, PrimState m ~ RealWorld) => Cell m (Tensor x y) -> (Cell m x -> Cell m y -> m r) -> m r
 tensor xs k = case xs of Tensor x y -> k x y; Object ref -> unsafeRead ref >>= absurd
 
@@ -72,11 +81,14 @@ data Partial m x y where
 
 deriving stock instance (Typeable m) => Eq (Partial m x y)
 
-type Execute :: (Type -> Type) -> Type -> Type -> Type
-newtype Execute m x y = Execute (Reify (Eq && JoinSemilattice && Show) (Partial m) x y)
-  deriving newtype (Category, Cartesian, Closed, Eq, Propagate, Terminal)
+instance (Typeable m) => Hashable (Partial m x y) where
+  hashWithSalt salt (Embed x) = hashWithSalt salt x
 
-instance (Eq x, JoinSemilattice x, Show x) => Const (Execute m) x where
+type Execute :: (Type -> Type) -> Type -> Type -> Type
+newtype Execute m x y = Execute (Reify (Eq && Hashable && JoinSemilattice && Show) (Partial m) x y)
+  deriving newtype (Category, Cartesian, Closed, Eq, Hashable, Propagate, Terminal)
+
+instance (Eq x, Hashable x, JoinSemilattice x, Show x) => Const (Execute m) x where
   const = Execute . const
 
 embed :: Cell m x -> Execute m Unit x
@@ -88,7 +100,7 @@ embed_ x = embed x . kill
 execute :: forall m i o. (MonadPlus m, PrimMonad m, PrimState m ~ RealWorld) => Execute m i o -> Cell m i -> m (Cell m o)
 execute (Execute command) input = go input command
   where
-    go :: Cell m x -> Reify (Eq && JoinSemilattice && Show) (Partial m) x y -> m (Cell m y)
+    go :: Cell m x -> Reify (Eq && Hashable && JoinSemilattice && Show) (Partial m) x y -> m (Cell m y)
     go xs = \case
       Compose f g -> go xs g >>= \y -> go y f
       Identity -> pure xs

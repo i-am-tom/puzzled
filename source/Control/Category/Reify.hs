@@ -18,6 +18,7 @@ import Control.Category.Hierarchy
 import Control.Category.Propagate (Propagate (choice, unify))
 import Data.Boring (Absurd (absurd))
 import Data.Constraint.Extra (type (~>))
+import Data.Hashable (Hashable (hashWithSalt))
 import Data.Kind (Constraint, Type)
 import Data.Tuple (Solo (..))
 import GHC.Show (showSpace)
@@ -80,6 +81,22 @@ instance (c ~> Eq, forall a b. Eq (k a b), Typeable k, Typeable c)
       x == y
     _ ->
       False
+
+instance (c ~> Eq, c ~> Hashable, forall a b. Hashable (k a b), Typeable k, Typeable c)
+    => Hashable (Reify c k x y) where
+  hashWithSalt salt = \case
+    Compose f g -> salt `hashWithSalt` (0 :: Int) `hashWithSalt` f `hashWithSalt` g
+    Identity -> salt `hashWithSalt` (1 :: Int)
+    Fork f g -> salt `hashWithSalt` (2 :: Int) `hashWithSalt` f `hashWithSalt` g
+    Exl -> salt `hashWithSalt` (3 :: Int)
+    Exr -> salt `hashWithSalt` (4 :: Int)
+    Curry f -> salt `hashWithSalt` (5 :: Int) `hashWithSalt` f
+    Uncurry f -> salt `hashWithSalt` (6 :: Int) `hashWithSalt` f
+    Kill -> salt `hashWithSalt` (7 :: Int)
+    Const x -> salt `hashWithSalt` (8 :: Int) `hashWithSalt` Solo x
+    Choice -> salt `hashWithSalt` (9 :: Int)
+    Unify -> salt `hashWithSalt` (10 :: Int)
+    Other k -> salt `hashWithSalt` (11 :: Int) `hashWithSalt` k
 
 instance
   (c ~> Show, forall a b. Show (k a b)) =>
