@@ -21,7 +21,7 @@ class Trivial x
 instance Trivial x
 
 -- | Products of constraints.
-type (&&) :: (Type -> Constraint) -> (Type -> Constraint) -> Type -> Constraint
+type (&&) :: (k -> Constraint) -> (k -> Constraint) -> k -> Constraint
 class (c x, d x) => (c && d) x
 
 instance (c x, d x) => (c && d) x
