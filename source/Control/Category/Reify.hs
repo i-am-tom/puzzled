@@ -1,7 +1,6 @@
-{-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -17,7 +16,7 @@ where
 import Control.Category.Hierarchy
 import Control.Category.Propagate (Propagate (choice, unify))
 import Data.Boring (Absurd (absurd))
-import Data.Constraint.Extra (type (~>))
+import Data.Constraint.Extra (All, type (~>))
 import Data.Hashable (Hashable (hashWithSalt))
 import Data.Kind (Constraint, Type)
 import Data.Tuple (Solo (..))
@@ -31,15 +30,15 @@ import Prelude hiding ((.))
 type Reify :: (Type -> Constraint) -> (Type -> Type -> Type) -> Type -> Type -> Type
 data Reify c k x y where
   -- Category
-  Compose :: (Typeable x, Typeable y, Typeable z) => Reify c k y z -> Reify c k x y -> Reify c k x z
+  Compose :: (All Typeable '[x, y, z]) => Reify c k y z -> Reify c k x y -> Reify c k x z
   Identity :: (Typeable x) => Reify c k x x
   -- Cartesian
-  Fork :: (Typeable x, Typeable y, Typeable z) => Reify c k x y -> Reify c k x z -> Reify c k x (Tensor y z)
-  Exl :: (Typeable x, Typeable y) => Reify c k (Tensor x y) x
-  Exr :: (Typeable x, Typeable y) => Reify c k (Tensor x y) y
+  Fork :: (All Typeable '[x, y, z]) => Reify c k x y -> Reify c k x z -> Reify c k x (Tensor y z)
+  Exl :: (All Typeable '[x, y]) => Reify c k (Tensor x y) x
+  Exr :: (All Typeable '[x, y]) => Reify c k (Tensor x y) y
   -- Closed
-  Curry :: (Typeable x, Typeable y, Typeable z) => Reify c k (Tensor x y) z -> Reify c k x (Hom y z)
-  Uncurry :: (Typeable x, Typeable y, Typeable z) => Reify c k x (Hom y z) -> Reify c k (Tensor x y) z
+  Curry :: (All Typeable '[x, y, z]) => Reify c k (Tensor x y) z -> Reify c k x (Hom y z)
+  Uncurry :: (All Typeable '[x, y, z]) => Reify c k x (Hom y z) -> Reify c k (Tensor x y) z
   -- Terminal
   Kill :: (Typeable x) => Reify c k x Unit
   -- Constant

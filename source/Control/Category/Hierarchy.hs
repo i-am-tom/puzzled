@@ -107,10 +107,10 @@ class (Cartesian k) => Closed k where
   apply = uncurry id
 
   -- | Currying of our arrows.
-  curry :: All (Object k) '[x, y, z] => k (Tensor x y) z -> k x (Hom y z)
+  curry :: (All (Object k) '[x, y, z]) => k (Tensor x y) z -> k x (Hom y z)
 
   -- | Uncurrying of our arrows.
-  uncurry :: All (Object k) '[x, y, z] => k x (Hom y z) -> k (Tensor x y) z
+  uncurry :: (All (Object k) '[x, y, z]) => k x (Hom y z) -> k (Tensor x y) z
 
 -------------------------------------------------------------------------------
 
