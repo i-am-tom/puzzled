@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -30,7 +31,7 @@ where
 import Control.Arrow (Kleisli)
 import Control.Category qualified as Base
 import Data.Boring (Absurd (absurd))
-import Data.Constraint.Extra (Trivial)
+import Data.Constraint.Extra (All, Trivial)
 import Data.Kind (Constraint, Type)
 import Prelude hiding (const, curry, id, uncurry, (.))
 
@@ -49,7 +50,7 @@ class Category k where
   id :: forall x. (Object k x) => k x x
 
   -- | Composition of morphisms.
-  (.) :: forall x y z. (Object k x, Object k y, Object k z) => k y z -> k x y -> k x z
+  (.) :: forall x y z. (All (Object k) '[x, y, z]) => k y z -> k x y -> k x z
 
 instance Category (->) where
   id = Base.id
@@ -74,16 +75,16 @@ instance Absurd (Tensor x y) where
 type Cartesian :: (Type -> Type -> Type) -> Constraint
 class (Category k) => Cartesian k where
   --  Tensor introduction.
-  (&&&) :: forall x y z. (Object k x, Object k y, Object k z) => k x y -> k x z -> k x (Tensor y z)
+  (&&&) :: forall x y z. (All (Object k) '[x, y, z, Tensor y z]) => k x y -> k x z -> k x (Tensor y z)
 
   -- | Left tensor eliminator.
-  exl :: forall x y. (Object k x, Object k y) => k (Tensor x y) x
+  exl :: forall x y. (All (Object k) '[x, y]) => k (Tensor x y) x
 
   -- | Right tensor eliminator.
-  exr :: forall x y. (Object k x, Object k y) => k (Tensor x y) y
+  exr :: forall x y. (All (Object k) '[x, y]) => k (Tensor x y) y
 
 -- | Swap the components of a tensor.
-swap :: (Cartesian k, Object k x, Object k y, Object k (Tensor x y)) => k (Tensor x y) (Tensor y x)
+swap :: (Cartesian k, All (Object k) '[x, y, Tensor x y, Tensor y x]) => k (Tensor x y) (Tensor y x)
 swap = exr &&& exl
 
 -------------------------------------------------------------------------------
@@ -102,14 +103,14 @@ type Closed :: (Type -> Type -> Type) -> Constraint
 class (Cartesian k) => Closed k where
   -- | An arrow from a homomorphism and a value in its domain to a value in its
   -- codomain. In more intuitive terms, this is function application.
-  apply :: forall x y. (Object k x, Object k y, Object k (Hom x y)) => k (Tensor (Hom x y) x) y
+  apply :: forall x y. (All (Object k) '[x, y, Hom x y]) => k (Tensor (Hom x y) x) y
   apply = uncurry id
 
   -- | Currying of our arrows.
-  curry :: (Object k x, Object k y, Object k z) => k (Tensor x y) z -> k x (Hom y z)
+  curry :: All (Object k) '[x, y, z] => k (Tensor x y) z -> k x (Hom y z)
 
   -- | Uncurrying of our arrows.
-  uncurry :: (Object k x, Object k y, Object k z) => k x (Hom y z) -> k (Tensor x y) z
+  uncurry :: All (Object k) '[x, y, z] => k x (Hom y z) -> k (Tensor x y) z
 
 -------------------------------------------------------------------------------
 
@@ -136,5 +137,5 @@ class (Terminal k) => Const k x where
   const :: (Object k x) => x -> k Unit x
 
 -- | Like 'const' but with an unrestricted domain.
-const_ :: (Const k x, Object k i, Object k Unit, Object k x) => x -> k i x
+const_ :: (Const k x, All (Object k) '[i, x, Unit]) => x -> k i x
 const_ x = const x . kill
