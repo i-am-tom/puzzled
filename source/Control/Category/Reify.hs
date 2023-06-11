@@ -50,8 +50,10 @@ data Reify c k x y where
   -- Extension
   Other :: k x y -> Reify c k x y
 
-instance (c ~> Eq, forall a b. Eq (k a b), Typeable k, Typeable c)
-    => Eq (Reify c k x y) where
+instance
+  (c ~> Eq, forall a b. Eq (k a b), Typeable k, Typeable c) =>
+  Eq (Reify c k x y)
+  where
   xs == ys = case (xs, ys) of
     (Compose fx fy, Compose gx gy) ->
       case eqTypeRep (typeOf fx) (typeOf gx) of
@@ -82,8 +84,10 @@ instance (c ~> Eq, forall a b. Eq (k a b), Typeable k, Typeable c)
     _ ->
       False
 
-instance (c ~> Eq, c ~> Hashable, forall a b. Hashable (k a b), Typeable k, Typeable c)
-    => Hashable (Reify c k x y) where
+instance
+  (c ~> Eq, c ~> Hashable, forall a b. Hashable (k a b), Typeable k, Typeable c) =>
+  Hashable (Reify c k x y)
+  where
   hashWithSalt salt = \case
     Compose f g -> salt `hashWithSalt` (0 :: Int) `hashWithSalt` f `hashWithSalt` g
     Identity -> salt `hashWithSalt` (1 :: Int)

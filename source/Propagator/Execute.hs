@@ -22,9 +22,9 @@ import Data.Hashable (Hashable (hashWithSalt))
 import Data.Kind (Type)
 import Data.Monoid.JoinSemilattice (JoinSemilattice (..))
 import Data.Semigroup (Arg (Arg))
-import Prelude hiding (const, id, read, (.))
 import Propagator.Cell (Value, create, unsafeRead, watch, write)
 import Type.Reflection (Typeable)
+import Prelude hiding (const, id, read, (.))
 
 -- | Run an 'Execute' arrow with the given input, and return the output.
 forwards :: (MonadPlus m, PrimMonad m, PrimState m ~ RealWorld, JoinSemilattice i) => Execute m i o -> i -> m o

@@ -22,11 +22,11 @@ import Data.Set (Set)
 import Hedgehog
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
-import Prelude hiding (all, const, curry, id, uncurry, (.))
 import Propagator.Cell (unsafeRead)
 import Propagator.Execute
 import Test.Hspec (Spec, it, shouldBe)
 import Type.Reflection (Typeable)
+import Prelude hiding (all, const, curry, id, uncurry, (.))
 
 type Tester :: Type -> Type
 type Tester = Execute (BranchT IO) Unit
