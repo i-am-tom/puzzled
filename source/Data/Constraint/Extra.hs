@@ -3,10 +3,11 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
+{-# LANGUAGE NoStarIsType #-}
 
 -- | Extra tools for dealing with constraints.
 module Data.Constraint.Extra
-  ( type (&&),
+  ( type (*),
     Trivial,
     type (~>),
     All,
@@ -23,10 +24,10 @@ class Trivial x
 instance Trivial x
 
 -- | Products of constraints.
-type (&&) :: (k -> Constraint) -> (k -> Constraint) -> k -> Constraint
-class (c x, d x) => (c && d) x
+type (*) :: (k -> Constraint) -> (k -> Constraint) -> k -> Constraint
+class (c x, d x) => (c * d) x
 
-instance (c x, d x) => (c && d) x
+instance (c x, d x) => (c * d) x
 
 -- | Create a constraint by applying the given constraint constructor to all
 -- values in the list.

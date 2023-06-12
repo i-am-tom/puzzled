@@ -5,7 +5,6 @@ license: MIT
 
 library
   exposed-modules:
-    Control.Category.Hierarchy
     Control.Category.Propagate
     Control.Category.Reify
     Control.Monad.Branch
@@ -17,6 +16,7 @@ library
   build-depends:
     , base
     , boring
+    , concat-classes
     , containers
     , hashable
     , logict
@@ -37,6 +37,7 @@ test-suite puzzled-tests
   build-depends:
     , base
     , boring
+    , concat-classes
     , containers
     , hashable
     , hedgehog
@@ -47,6 +48,9 @@ test-suite puzzled-tests
     , tasty
     , tasty-hedgehog
     , tasty-hspec
+
+    , categorifier-plugin
+    , categorifier-concat-integration
   build-tool-depends:
     tasty-discover:tasty-discover
   other-modules:

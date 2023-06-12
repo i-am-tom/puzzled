@@ -4,17 +4,18 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NoStarIsType #-}
 
 module Propagator.ExecuteTest where
 
+import ConCat.Category
 import Control.Applicative (Alternative (empty))
-import Control.Category.Hierarchy
 import Control.Category.Propagate (Propagate (choice, unify))
 import Control.Category.Reify (Reify (..), Void)
 import Control.Monad.Branch (BranchT, all)
 import Control.Monad.Primitive (PrimMonad (PrimState), RealWorld)
 import Data.Boring (absurd)
-import Data.Constraint.Extra (type (&&))
+import Data.Constraint.Extra (type (*))
 import Data.Hashable (Hashable)
 import Data.Kind (Constraint, Type)
 import Data.Monoid.JoinSemilattice (JoinSemilattice)
@@ -24,22 +25,23 @@ import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
 import Propagator.Cell (unsafeRead)
 import Propagator.Execute
-import Test.Hspec (Spec, it, shouldBe)
+import Test.Hspec (Spec, shouldBe)
+import Test.Hspec qualified as Spec
 import Type.Reflection (Typeable)
 import Prelude hiding (all, const, curry, id, uncurry, (.))
 
 type Tester :: Type -> Type
-type Tester = Execute (BranchT IO) Unit
+type Tester = Execute (BranchT IO) ()
 
 spec_execute :: Spec
 spec_execute = do
-  it "x = 'a'; x = ?" do
+  Spec.it "x = 'a'; x = ?" do
     let go :: Tester (Set Char)
         go = const ['a']
 
     run go >>= \output -> output `shouldBe` [['a']]
 
-  it "x = 'a'; x = y; y = ?" do
+  Spec.it "x = 'a'; x = y; y = ?" do
     let go :: Tester (Set Char)
         go = exr . (unify &&& exr) . (const ['a'] &&& const mempty)
     -- \^ exr . (unify &&& exr) means we explicitly check the unknown
@@ -47,27 +49,27 @@ spec_execute = do
 
     run go >>= \output -> output `shouldBe` [['a']]
 
-  it "x ⊂ 'a'; x = y; y = z; z ⊂ ?" do
+  Spec.it "x ⊂ 'a'; x = y; y = z; z ⊂ ?" do
     let go :: Tester (Set Char)
-        go = unify . ((unify . exl) &&& exr) . (const ['a'] &&& const mempty &&& const mempty)
+        go = unify . (exl &&& (unify . exr)) . (const ['a'] &&& const mempty &&& const mempty)
     -- \^ Assuming the above test worked, we don't do the same dance as
     -- above.
 
     run go >>= \output -> output `shouldBe` [['a']]
 
-  it "{ 1 } ⊂ x; { 2 } ⊂ y; { 3 } ⊂ z; x = y; y = z; ? ⊂ x" do
+  Spec.it "{ 1 } ⊂ x; { 2 } ⊂ y; { 3 } ⊂ z; x = y; y = z; ? ⊂ x" do
     let go :: Tester (Set Int)
-        go = unify . ((unify . exl) &&& exr) . (const [1] &&& const [2] &&& const [3])
+        go = unify . (exl &&& (unify . exr)) . (const [1] &&& const [2] &&& const [3])
 
     run go >>= \output -> output `shouldBe` [[1, 2, 3]]
 
-  it "x ⊂ { 1, 2 }; x = y; y = ?" do
+  Spec.it "x ⊂ { 1, 2 }; x = y; y = ?" do
     let go :: Tester (Set Int)
         go = choice . (const [1] &&& const [2])
 
     run go >>= \output -> output `shouldBe` [[1], [2]]
 
-run :: (PrimMonad m, PrimState m ~ RealWorld) => Execute (BranchT m) Unit o -> m [o]
+run :: (PrimMonad m, PrimState m ~ RealWorld) => Execute (BranchT m) () o -> m [o]
 run k = all $ execute k Terminal >>= \case Object ref -> unsafeRead ref; _ -> empty
 
 ---
@@ -76,7 +78,7 @@ genSet :: Gen (Set Char)
 genSet = Gen.set (Range.linear 0 10) Gen.alphaNum
 
 type Testable :: Type -> Constraint
-type Testable = Eq && Hashable && JoinSemilattice && Show
+type Testable = Eq * Hashable * JoinSemilattice * Show
 
 -- | The easiest way to check for equality is to run both programs with the
 -- same input, and compare the outputs.
@@ -99,13 +101,14 @@ interpret :: (MonadFail m, PrimMonad m, Typeable i, Typeable o) => Reify Testabl
 interpret = \case
   Compose f g -> interpret f . interpret g
   Identity -> id
-  Fork f g -> interpret f &&& interpret g
+  Dup -> dup
   Exl -> exl
   Exr -> exr
+  Prod f g -> interpret f *** interpret g
   Curry f -> curry (interpret f)
   Uncurry f -> uncurry (interpret f)
-  Kill -> kill
-  Const x -> const_ x
+  Kill -> it
+  Const x -> const x
   Choice -> choice
   Unify -> unify
   Other v -> absurd v
@@ -115,7 +118,7 @@ genProgram =
   Gen.recursive
     Gen.choice
     [ pure id,
-      fmap const_ genSet
+      fmap const genSet
     ]
     [ Gen.subterm2 genProgram genProgram (.),
       Gen.subterm2 genProgram genProgram \x y -> exl . (x &&& y),

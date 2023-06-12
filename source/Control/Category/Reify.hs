@@ -13,7 +13,7 @@ module Control.Category.Reify
   )
 where
 
-import Control.Category.Hierarchy
+import ConCat.Category
 import Control.Category.Propagate (Propagate (choice, unify))
 import Data.Boring (Absurd (absurd))
 import Data.Constraint.Extra (All, type (~>))
@@ -29,25 +29,80 @@ import Prelude hiding ((.))
 -- the structure of a computation.
 type Reify :: (Type -> Constraint) -> (Type -> Type -> Type) -> Type -> Type -> Type
 data Reify c k x y where
-  -- Category
-  Compose :: (All Typeable '[x, y, z]) => Reify c k y z -> Reify c k x y -> Reify c k x z
-  Identity :: (Typeable x) => Reify c k x x
-  -- Cartesian
-  Fork :: (All Typeable '[x, y, z]) => Reify c k x y -> Reify c k x z -> Reify c k x (Tensor y z)
-  Exl :: (All Typeable '[x, y]) => Reify c k (Tensor x y) x
-  Exr :: (All Typeable '[x, y]) => Reify c k (Tensor x y) y
-  -- Closed
-  Curry :: (All Typeable '[x, y, z]) => Reify c k (Tensor x y) z -> Reify c k x (Hom y z)
-  Uncurry :: (All Typeable '[x, y, z]) => Reify c k x (Hom y z) -> Reify c k (Tensor x y) z
-  -- Terminal
-  Kill :: (Typeable x) => Reify c k x Unit
-  -- Constant
-  Const :: (c x) => x -> Reify c k y x
-  -- Propagate
-  Choice :: (Typeable x) => Reify c k (Tensor x x) x
-  Unify :: (Typeable x) => Reify c k (Tensor x x) x
-  -- Extension
-  Other :: k x y -> Reify c k x y
+  Compose ::
+    (All Typeable '[x, y, z]) =>
+    Reify c k y z ->
+    Reify c k x y ->
+    Reify c k x z
+  Identity ::
+    (Typeable x) =>
+    Reify c k x x
+  Dup ::
+    (Typeable x) =>
+    Reify c k x (x && x)
+  Exl ::
+    (All Typeable '[x, y]) =>
+    Reify c k (x && y) x
+  Exr ::
+    (All Typeable '[x, y]) =>
+    Reify c k (x && y) y
+  Prod ::
+    (All Typeable '[x, y, z, w]) =>
+    Reify c k x z ->
+    Reify c k y w ->
+    Reify c k (x && y) (z && w)
+  Curry ::
+    (All Typeable '[x, y, z]) =>
+    Reify c k (x && y) z ->
+    Reify c k x (y -> z)
+  Uncurry ::
+    (All Typeable '[x, y, z]) =>
+    Reify c k x (y -> z) ->
+    Reify c k (x && y) z
+  Kill ::
+    (Typeable x) =>
+    Reify c k x ()
+  Const ::
+    (c x) =>
+    x ->
+    Reify c k y x
+  Choice ::
+    (Typeable x) =>
+    Reify c k (x && x) x
+  Unify ::
+    (Typeable x) =>
+    Reify c k (x && x) x
+  Other ::
+    k x y ->
+    Reify c k x y
+
+instance Category (Reify c k) where
+  type Ok (Reify c k) = Typeable
+
+  (.) = Compose
+  id = Identity
+
+instance ProductCat (Reify c k) where
+  dup = Dup
+  exl = Exl
+  exr = Exr
+
+instance MonoidalPCat (Reify c k) where
+  (***) = Prod
+
+instance ClosedCat (Reify c k) where
+  curry = Curry
+  uncurry = Uncurry
+
+instance TerminalCat (Reify c k) where
+  it = Kill
+
+instance (c x, Typeable x) => ConstCat (Reify c k) x where
+  unitArrow = Const
+
+instance Propagate (Reify c k) where
+  choice = Choice
+  unify = Unify
 
 instance
   (c ~> Eq, forall a b. Eq (k a b), Typeable k, Typeable c) =>
@@ -60,8 +115,8 @@ instance
         Nothing -> False
     (Identity, Identity) ->
       True
-    (Fork x y, Fork z w) ->
-      x == z && y == w
+    (Dup, Dup) ->
+      True
     (Exl, Exl) ->
       True
     (Exr, Exr) ->
@@ -90,9 +145,10 @@ instance
   hashWithSalt salt = \case
     Compose f g -> salt `hashWithSalt` (0 :: Int) `hashWithSalt` f `hashWithSalt` g
     Identity -> salt `hashWithSalt` (1 :: Int)
-    Fork f g -> salt `hashWithSalt` (2 :: Int) `hashWithSalt` f `hashWithSalt` g
+    Dup -> salt `hashWithSalt` (2 :: Int)
     Exl -> salt `hashWithSalt` (3 :: Int)
     Exr -> salt `hashWithSalt` (4 :: Int)
+    Prod f g -> salt `hashWithSalt` (5 :: Int) `hashWithSalt` f `hashWithSalt` g
     Curry f -> salt `hashWithSalt` (5 :: Int) `hashWithSalt` f
     Uncurry f -> salt `hashWithSalt` (6 :: Int) `hashWithSalt` f
     Kill -> salt `hashWithSalt` (7 :: Int)
@@ -112,16 +168,15 @@ instance
           . showsPrec 11 f
           . showSpace
           . showsPrec 11 g
-    Identity ->
-      showString "Identity"
-    Fork f g ->
-      showParen (p >= 11) $
-        showString "Fork"
-          . showsPrec 11 f
-          . showSpace
-          . showsPrec 11 g
+    Identity -> showString "Identity"
+    Dup -> showString "Dup"
     Exl -> showString "Exl"
     Exr -> showString "Exr"
+    Prod f g ->
+      showString "Prod "
+        . showsPrec 11 f
+        . showSpace
+        . showsPrec 11 g
     Curry f ->
       showParen (p >= 11) $
         showString "Curry "
@@ -141,31 +196,6 @@ instance
       showParen (p >= 11) $
         showString "Other "
           . showsPrec 11 k
-
-instance Category (Reify c k) where
-  type Object (Reify c k) = Typeable
-
-  (.) = Compose
-  id = Identity
-
-instance Cartesian (Reify c k) where
-  (&&&) = Fork
-  exl = Exl
-  exr = Exr
-
-instance Closed (Reify c k) where
-  curry = Curry
-  uncurry = Uncurry
-
-instance Terminal (Reify c k) where
-  kill = Kill
-
-instance (c x) => Const (Reify c k) x where
-  const = Const
-
-instance Propagate (Reify c k) where
-  choice = Choice
-  unify = Unify
 
 -- | A void category that can be used to instantiate a version of 'Reify' with
 -- no extensions.

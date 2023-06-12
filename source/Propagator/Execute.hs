@@ -7,17 +7,17 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE NoStarIsType #-}
 
 module Propagator.Execute where
 
+import ConCat.Category
 import Control.Applicative (empty, liftA2, (<|>))
-import Control.Category.Hierarchy
 import Control.Category.Propagate (Propagate (..))
 import Control.Category.Reify (Reify (..))
 import Control.Monad (MonadPlus)
 import Control.Monad.Primitive (PrimMonad (PrimState), RealWorld)
-import Data.Boring (absurd)
-import Data.Constraint.Extra (type (&&))
+import Data.Constraint.Extra (type (*))
 import Data.Hashable (Hashable (hashWithSalt))
 import Data.Kind (Type)
 import Data.Monoid.JoinSemilattice (JoinSemilattice (..))
@@ -52,13 +52,13 @@ backwards k x = do
 type Cell :: (Type -> Type) -> Type -> Type
 data Cell m x where
   -- | The terminal object.
-  Terminal :: Cell m Unit
+  Terminal :: Cell m ()
   -- | A "regular" mutable object.
   Object :: (JoinSemilattice x) => Value m x -> Cell m x
   -- | Tensors.
-  Tensor :: Cell m x -> Cell m y -> Cell m (Tensor x y)
+  Tensor :: Cell m x -> Cell m y -> Cell m (x && y)
   -- | Homomorphisms.
-  Morphism :: Execute m x y -> Cell m (Hom x y)
+  Morphism :: Execute m x y -> Cell m (x -> y)
 
 deriving stock instance (Typeable m) => Eq (Cell m x)
 
@@ -69,15 +69,15 @@ instance (Typeable m) => Hashable (Cell m x) where
     Tensor x y -> salt `hashWithSalt` (2 :: Int) `hashWithSalt` x `hashWithSalt` y
     Morphism f -> salt `hashWithSalt` (3 :: Int) `hashWithSalt` f
 
-tensor :: (PrimMonad m, PrimState m ~ RealWorld) => Cell m (Tensor x y) -> (Cell m x -> Cell m y -> m r) -> m r
-tensor xs k = case xs of Tensor x y -> k x y; Object ref -> unsafeRead ref >>= absurd
+tensor :: (PrimMonad m, PrimState m ~ RealWorld) => Cell m (x && y) -> (Cell m x -> Cell m y -> m r) -> m r
+tensor xs k = case xs of Tensor x y -> k x y; Object _ -> error "TODO"
 
-morphism :: (PrimMonad m, PrimState m ~ RealWorld) => Cell m (Hom x y) -> (Execute m x y -> m r) -> m r
-morphism xs k = case xs of Morphism f -> k f; Object ref -> unsafeRead ref >>= absurd
+morphism :: (PrimMonad m, PrimState m ~ RealWorld) => Cell m (x -> y) -> (Execute m x y -> m r) -> m r
+morphism xs k = case xs of Morphism f -> k f; Object _ -> error "TODO"
 
 type Partial :: (Type -> Type) -> Type -> Type -> Type
 data Partial m x y where
-  Embed :: Cell m x -> Partial m Unit x
+  Embed :: Cell m x -> Partial m () x
 
 deriving stock instance (Typeable m) => Eq (Partial m x y)
 
@@ -85,28 +85,29 @@ instance (Typeable m) => Hashable (Partial m x y) where
   hashWithSalt salt (Embed x) = hashWithSalt salt x
 
 type Execute :: (Type -> Type) -> Type -> Type -> Type
-newtype Execute m x y = Execute (Reify (Eq && Hashable && JoinSemilattice && Show) (Partial m) x y)
-  deriving newtype (Category, Cartesian, Closed, Eq, Hashable, Propagate, Terminal)
+newtype Execute m x y = Execute (Reify (Eq * Hashable * JoinSemilattice * Show) (Partial m) x y)
+  deriving newtype (Category, MonoidalPCat, ProductCat, ClosedCat, Eq, Hashable, Propagate, TerminalCat)
 
-instance (Eq x, Hashable x, JoinSemilattice x, Show x) => Const (Execute m) x where
+instance (Eq x, Hashable x, JoinSemilattice x, Show x, Typeable x) => ConstCat (Execute m) x where
   const = Execute . const
 
-embed :: Cell m x -> Execute m Unit x
+embed :: Cell m x -> Execute m () x
 embed = Execute . Other . Embed
 
 embed_ :: (Typeable x, Typeable y) => Cell m x -> Execute m y x
-embed_ x = embed x . kill
+embed_ x = embed x . it
 
 execute :: forall m i o. (MonadPlus m, PrimMonad m, PrimState m ~ RealWorld) => Execute m i o -> Cell m i -> m (Cell m o)
 execute (Execute command) input = go input command
   where
-    go :: Cell m x -> Reify (Eq && Hashable && JoinSemilattice && Show) (Partial m) x y -> m (Cell m y)
+    go :: Cell m x -> Reify (Eq * Hashable * JoinSemilattice * Show) (Partial m) x y -> m (Cell m y)
     go xs = \case
       Compose f g -> go xs g >>= \y -> go y f
       Identity -> pure xs
-      Fork f g -> liftA2 Tensor (go xs f) (go xs g)
+      Dup -> pure (Tensor xs xs)
       Exl -> tensor xs \x _ -> pure x
       Exr -> tensor xs \_ y -> pure y
+      Prod f g -> tensor xs \x y -> liftA2 Tensor (go x f) (go y g)
       Kill -> pure Terminal
       Const x -> fmap Object (create x)
       Curry f -> pure $ Morphism (Execute f . (embed_ xs &&& id))
