@@ -97,7 +97,25 @@ instance (EvalStep f (Fix h), EvalStep g (Fix h)) =>
     evalStepAlg r (Inl f) = evalStepAlg r f
     evalStepAlg r (Inr g) = evalStepAlg r g
 
+instance (Functor g, Functor f, f :.: g :<: h) => 
+    EvalStep (f :.: g) (Fix h) where
+    evalStepAlg r (CIRC fg) = EvalRes {
+        orig = In $ inj $ CIRC $ fmap (fmap (orig . r)) fg ,
+        res = In $ inj $ CIRC $ fmap (fmap (res . r)) fg
+    }
 
+instance (Functor g, Functor f, f :*: g :<: h) =>
+    EvalStep (f :*: g) (Fix h) where
+    evalStepAlg r (fa :*: ga) = EvalRes {
+        orig = In $ inj $ (fmap (orig . r) fa) :*: (fmap (orig . r) ga) ,
+        res = In $ inj $ (fmap (res . r) fa) :*: (fmap (res . r) ga)
+    }
+
+instance (KF b :<: h) => EvalStep (KF b) (Fix h) where
+    evalStepAlg r kf = EvalRes {
+        orig = In $ inj $ fmap (orig . r) kf ,
+        res = In $ inj $ fmap (res . r) kf
+    }
 
 {-
 data LamR rep b where
