@@ -63,8 +63,11 @@ executable StackProject-exe
       BaseVarMonadRenamed
       ConstrainedMonad
       DTC
+      DTCFunctions.BakeContext
+      Experiments.LambdaCalc
       FNCDVarMonad
       Lambda
+      LambdaVarMonad
       Lattice
       NewConstrDefVarMonad
       Propagator

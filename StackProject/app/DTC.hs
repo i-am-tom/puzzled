@@ -52,3 +52,19 @@ instance (Show a, Show (f a), Show (g a)) => Show ((f :+: g) a) where
 
 instance (Show (f (Fix f))) => Show (Fix f) where
     showsPrec d (In f) = showsPrec d f
+
+data Wit0 = Wit0
+data Wit1 = Wit1
+data Wit2 = Wit2
+
+class (Functor f) => Functor0 f where
+    transf0 :: f a -> f b
+    red0 :: b -> Algebra f b
+
+class (Functor f) => Functor1 f where
+    transf1 :: b -> f a -> f b
+    red1 :: (b -> b) -> Algebra f b
+
+class (Functor f) => Functor2 f where
+    transf2 :: b -> b -> f a -> f b
+    red2 :: (b -> b -> b) -> Algebra f b
