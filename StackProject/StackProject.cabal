@@ -63,9 +63,12 @@ executable StackProject-exe
       BaseVarMonadRenamed
       ConstrainedMonad
       DTC
+      FNCDVarMonad
       Lambda
+      Lattice
       NewConstrDefVarMonad
       Propagator
+      RunFNCDVarMonad
       VarMonadsReflection
       Paths_StackProject
   hs-source-dirs:
