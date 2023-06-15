@@ -84,11 +84,11 @@ instance (LamF :<: f) => EvalStep LamF (Fix f) where
         res = lam (orig $ r e)
     }
 
-instance (ApplF :<: f, LamF :<: f, Exchange f (Fix f)) => EvalStep ApplF (Fix f) where
+instance (Functor f, ApplF :<: f, LamF :<: f, Exchange f (Fix f)) => EvalStep ApplF (Fix f) where
     evalStepAlg r (ApplF a b) = EvalRes {
         orig = (orig $ r a) <^> (orig $ r b),
-        res = case res (r a) of
-            In (proj -> Just (LamF e)) -> exchange' 1 e (orig $ r b)
+        res = case outF (res (r a)) of
+            (proj -> Just (LamF e)) -> exchange' 1 e (orig $ r b)
             _ -> (orig $ r a) <^> (orig $ r b)
     }
 

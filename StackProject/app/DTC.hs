@@ -1,13 +1,19 @@
 module DTC where
 
-data Fix f = In (f (Fix f))
-deriving instance Eq (f (Fix f)) => Eq (Fix f)
-deriving instance Ord (f (Fix f)) => Ord (Fix f)
+type Fix f = forall a . Algebra f a -> a --In (f (Fix f))
+--deriving instance Eq (f (Fix f)) => Eq (Fix f)
+--deriving instance Ord (f (Fix f)) => Ord (Fix f)
 
 type Algebra f a = forall r. (r -> a) -> f r -> a
 
-foldF :: (Functor f) => Algebra f a -> Fix f -> a
-foldF alg (In f) = alg id $ fmap (foldF alg) f
+foldF :: Algebra f a -> Fix f -> a
+foldF alg f = f alg --alg id $ fmap (foldF alg) f
+
+inF :: f (Fix f) -> Fix f
+inF f alg = alg (foldF alg) f
+
+outF :: (Functor f) => Fix f -> f (Fix f)
+outF = foldF $ \r f -> fmap (inF . r) f
 
 infix 1 :<:
 class (Functor f, Functor g) => f :<: g where
@@ -44,14 +50,16 @@ instance (Functor g, f :<: h) => f :<: (g :+: h) where
 
 
 inject :: (f :<: g) => f (Fix g) -> Fix g
-inject = In . inj
+inject = inF . inj
 
 instance (Show a, Show (f a), Show (g a)) => Show ((f :+: g) a) where
     showsPrec d (Inl f) = showsPrec d f
     showsPrec d (Inr g) = showsPrec d g
 
-instance (Show (f (Fix f))) => Show (Fix f) where
-    showsPrec d (In f) = showsPrec d f
+{-}
+instance (Functor f, Show (f (Fix f))) => Show (Fix f) where
+    showsPrec d f = showsPrec d (outF f)
+    -}
 
 data Wit0 = Wit0
 data Wit1 = Wit1
