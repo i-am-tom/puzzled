@@ -37,6 +37,7 @@ default-extensions:
 - UndecidableSuperClasses
 - KindSignatures
 - LambdaCase
+- TypeApplications
 
 dependencies:
 - base >= 4.7 && < 5

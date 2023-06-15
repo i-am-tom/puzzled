@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use camelCase" #-}
-module VarMonads where
+module VarMonadsReflection where
 
 import Data.Typeable
 import Data.Maybe
