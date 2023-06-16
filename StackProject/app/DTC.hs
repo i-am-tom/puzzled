@@ -1,5 +1,7 @@
 module DTC where
 
+import Control.Monad
+
 data Fix f = In (f (Fix f))
 deriving instance Eq (f (Fix f)) => Eq (Fix f)
 deriving instance Ord (f (Fix f)) => Ord (Fix f)
@@ -27,6 +29,10 @@ newtype KF b a = KF b deriving (Eq, Ord, Functor)
 
 type KRec a = KF a a
 type KID a = KF () a
+
+foldCM :: (Monad m, Functor f) => (forall a. v a -> m a) -> Algebra f (m a) -> Fix (f :.: v) -> m a
+foldCM read alg (In (CIRC f)) = alg (foldCM read alg <=< read) f
+
 
 instance (Functor f) => f :<: f where
     inj = id
