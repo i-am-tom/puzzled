@@ -18,11 +18,30 @@ data Bot a = Bot deriving (Show, Eq, Ord, Functor)
 
 type TB f = Top :+: Bot :+: f 
 
-topp :: (Functor f) => Fix (TB f) 
-topp = inject Top
+stdmeet :: (f a -> f a -> TB f a) -> TB f a -> TB f a -> TB f a
+stdmeet _ TTOP x = x
+stdmeet _ x TTOP = x
+stdmeet _ TBOT _ = TBOT
+stdmeet _ _ TBOT = TBOT
+stdmeet f (Elem x) (Elem y) = f x y
 
+stdjoin :: (f a -> f a -> TB f a) -> TB f a -> TB f a -> TB f a
+stdjoin _ TTOP _ = TTOP
+stdjoin _ _ TTOP = TTOP
+stdjoin _ TBOT x = x
+stdjoin _ x TBOT = x
+stdjoin f (Elem x) (Elem y) = f x y
+
+--topp :: (Functor f) => Fix (TB f) 
+--topp = In $ Inr $ Inl Bot
+
+pattern Elem :: f a -> TB f a
 pattern Elem x = Inr (Inr x)
+
+pattern TTOP :: TB f a
 pattern TTOP = Inl Top
+
+pattern TBOT :: TB f a
 pattern TBOT = Inr (Inl Bot)
 
 instance (
@@ -31,83 +50,86 @@ instance (
     , Lattice (TB f a)
     , Lattice (TB g a)) => 
     Lattice (TB (f :+: g) a) where
-    (Elem (Inl f1)) /\ (Elem (Inl f2)) = case (inj f1 /\ inj f2) of
-        (TBOT) -> inj Bot
-        (TTOP) -> error "meeting two concrete functors should never return a top level top! (has to have at least top level constructor)"
-        (Elem ff) -> Elem ff
-    (Elem (Inl g1)) /\ (Elem (Inl g2)) = case (inj g1 /\ inj g2) of
-        (TBOT) -> inj Bot
-        (TTOP) -> error "meeting two concrete functors should never return a top level top! (has to have at least top level constructor)"
-        (Elem ff) -> Elem ff
-    _ /\ _ = inj Bot
+    (/\) = let 
+        m (Inl f1) (Inl f2) = (case (inj f1 /\ inj f2) of
+            (TBOT) -> inj Bot
+            (TTOP) -> error "meeting two concrete functors should never return a top level top! (has to have at least top level constructor)"
+            (Elem ff) -> Elem ff)
+        m (Inr g1) (Inr g2) = case (inj g1 /\ inj g2) of
+            (TBOT) -> inj Bot
+            (TTOP) -> error "meeting two concrete functors should never return a top level top! (has to have at least top level constructor)"
+            (Elem ff) -> Elem ff
+        in stdmeet m
 
-    (Elem (Inl f1)) \/ (Elem (Inl f2)) = case (inj f1 \/ inj f2) of
-        (TBOT) -> error "joining two concrete functors should never return a top level bot! (has to have at least top level constructor)"
-        (TTOP) -> inj Top
-        (Elem ff) -> Elem ff
-    (Elem (Inl g1)) \/ (Elem (Inl g2)) = case (inj g1 \/ inj g2) of
-        (TBOT) -> error "joining two concrete functors should never return a top level bot! (has to have at least top level constructor)"
-        (TTOP) -> inj Top
-        (Elem ff) -> Elem ff
-    _ \/ _ = inj Top
+    (\/) = let 
+        m (Inl f1) (Inl f2) = case (inj f1 \/ inj f2) of
+            (TBOT) -> error "joining two concrete functors should never return a top level bot! (has to have at least top level constructor)"
+            (TTOP) -> inj Top
+            (Elem ff) -> Elem ff
+        m (Inr g1) (Inr g2) = case (inj g1 \/ inj g2) of
+            (TBOT) -> error "joining two concrete functors should never return a top level bot! (has to have at least top level constructor)"
+            (TTOP) -> inj Top
+            (Elem ff) -> Elem ff
+        in stdjoin m
 
 instance (Functor f, Functor g, Lattice (TB f a), Lattice (TB g a)) => Lattice (TB (f :*: g) a) where
-    TTOP /\ x = x
-    x /\ TTOP = x
-    TBOT /\ _ = TBOT
-    _ /\ TBOT = TBOT
-    (Elem (f1 :*: g1)) /\ (Elem (f2 :*: g2)) = case (inj @f @(TB f) f1 /\ inj f2, inj @g @(TB g) g1 /\ inj g2) of
-        (TBOT, _) -> TBOT
-        (_, TBOT) -> TBOT
-        (Elem ff, Elem gg)  -> inj $ ff :*: gg
+    (/\) = let
+        m (f1 :*: g1) (f2 :*: g2) = case (inj @f @(TB f) f1 /\ inj f2, inj @g @(TB g) g1 /\ inj g2) of
+            (TBOT, _) -> TBOT
+            (_, TBOT) -> TBOT
+            (Elem ff, Elem gg)  -> inj $ ff :*: gg
+        in stdmeet m
 
-    TTOP \/ _ = TTOP
-    _ \/ TTOP = TTOP
-    TBOT \/ x = x
-    x \/ TBOT = x
-    (Elem (f1 :*: g1)) \/ (Elem (f2 :*: g2)) = case (inj @f @(TB f) f1 \/ inj f2, inj @g @(TB g) g1 \/ inj g2) of
-        (TBOT, _) -> TBOT
-        (_, TBOT) -> TBOT
-        (Elem ff, Elem gg)  -> inj $ ff :*: gg
+    (\/) = let
+        m (f1 :*: g1) (f2 :*: g2) = case (inj @f @(TB f) f1 \/ inj f2, inj @g @(TB g) g1 \/ inj g2) of
+            (TBOT, _) -> TBOT
+            (_, TBOT) -> TBOT
+            (Elem ff, Elem gg)  -> inj $ ff :*: gg
+        in stdjoin m
 
 --TODO: Does not propagate bot upwards!
 instance (Eq b, BoundedMeetSemilattice b) => Lattice (TB (KF b) a) where
-    TTOP /\ x = x
-    x /\ TTOP = x
-    TBOT /\ _ = TBOT
-    _ /\ TBOT = TBOT
-    (Elem (KF x)) /\ (Elem (KF y))
-        | (x /\ y) == bot = TBOT
-        | otherwise = inj $ KF (x /\ y)
+    (/\) = let
+        m (KF x) (KF y)
+            | (x /\ y) == bot = TBOT
+            | otherwise = inj $ KF (x /\ y)
+        in stdmeet m
 
-    TTOP \/ _ = TTOP
-    _ \/ TTOP = TTOP
-    TBOT \/ x = x
-    x \/ TBOT = x
-    (Elem (KF x)) \/ (Elem (KF y))
-        | (x \/ y) == bot = TBOT
-        | otherwise = inj $ KF (x \/ y)
+    (\/) = let
+        m (KF x) (KF y)
+            | (x \/ y) == bot = TBOT
+            | otherwise = inj $ KF (x \/ y)
+        in stdjoin m
 
 --TODO: Does not propagate bot upwards!
 instance (Eq a, BoundedMeetSemilattice a) => Lattice (TB KRec a) where
-    TTOP /\ x = x
-    x /\ TTOP = x
-    TBOT /\ _ = TBOT
-    _ /\ TBOT = TBOT
-    (Elem (KRec x)) /\ (Elem (KRec y))
-        | (x /\ y) == bot = TBOT
-        | otherwise = inj $ KRec (x /\ y)
+    (/\) = let
+        m (KRec x) (KRec y)
+            | (x /\ y) == bot = TBOT
+            | otherwise = inj $ KRec (x /\ y)
+        in stdmeet m
 
-    TTOP \/ _ = TTOP
-    _ \/ TTOP = TTOP
-    TBOT \/ x = x
-    x \/ TBOT = x
-    (Elem (KRec x)) \/ (Elem (KRec y))
-        | (x \/ y) == bot = TBOT
-        | otherwise = inj $ KRec (x \/ y)
+    (\/) = let
+        m (KRec x) (KRec y)
+            | (x \/ y) == bot = TBOT
+            | otherwise = inj $ KRec (x \/ y)
+        in stdjoin m
 
 instance (Lattice (f a), Top :<: f) => BoundedJoinSemilattice (f a) where
     top = inj Top
 
 instance (Lattice (f a), Bot :<: f) => BoundedMeetSemilattice (f a) where
     bot = inj Bot
+
+instance Lattice (TB DeBVarF a) where
+    (/\) = let
+        m (DeBVarF x) (DeBVarF y)
+            | x /= y = TBOT
+            | otherwise = inj $ DeBVarF x
+        in stdmeet m
+
+    (\/) = let
+        m (DeBVarF x) (DeBVarF y)
+            | x /= y = TTOP
+            | otherwise = inj $ DeBVarF x
+        in stdjoin m
