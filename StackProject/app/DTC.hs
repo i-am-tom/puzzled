@@ -26,11 +26,11 @@ infixr 4 :.:
 newtype (f :.: g) a = CIRC (f (g a)) deriving (Eq, Ord, Functor)
 
 newtype KF b a = KF b deriving (Eq, Ord, Functor)
+newtype KRec a = KRec a deriving (Eq, Ord, Functor)
 
-type KRec a = KF a a
 type KID a = KF () a
 
-foldCM :: (Monad m, Functor f) => (forall a. v a -> m a) -> Algebra f (m a) -> Fix (f :.: v) -> m a
+foldCM :: (Monad m, Functor f) => (v (Fix (f :.: v)) -> m (Fix (f :.: v))) -> Algebra f (m a) -> Fix (f :.: v) -> m a
 foldCM read alg (In (CIRC f)) = alg (foldCM read alg <=< read) f
 
 

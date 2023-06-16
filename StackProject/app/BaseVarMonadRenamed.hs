@@ -2,7 +2,8 @@
 module BaseVarMonadRenamed 
     ( bvmNew
     , bvmRead
-    , bvmWrite)
+    , bvmWrite
+    , BaseVarMonad)
     where
 
 import BaseVarMonad
