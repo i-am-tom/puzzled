@@ -1,9 +1,15 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 module NewConstrDefVarMonad where
 
+import Prelude hiding (read)
+import Data.IORef
 import DTC
 import Control.Monad
 import BaseVarMonadRenamed
+import Data.Kind
+import BaseVarMonad ()
+import Lattice
+import BaseVarMonadRenamed (bvmRead)
 
 class NewConstrDefVarMonad c m v | m -> c , m -> v where
     new :: (c a) => m (v a)
@@ -15,12 +21,16 @@ new' x = do
     v <- new
     write v x
     return v 
-
---instance BaseVarMonad m v => NewConstrDefVarMonad c m v where
     
 
 class IDC a where
 instance IDC a
+
+
+instance NewConstrDefVarMonad BoundedJoinSemilattice IO IORef where
+    new = bvmNew top
+    read = bvmRead
+    write = bvmWrite
 
 class ConstrainedReadVarMon c m v | m -> c where
     cread :: (c a) => v a -> m a
