@@ -133,3 +133,41 @@ instance Lattice (TB DeBVarF a) where
             | x /= y = TTOP
             | otherwise = inj $ DeBVarF x
         in stdjoin m
+
+instance (Eq a, BoundedMeetSemilattice a) => Lattice (TB LamF a) where
+    (/\) = let 
+        m :: LamF a -> LamF a -> TB LamF a
+        m (LamF x) (LamF y) 
+            | xy == bot = TBOT
+            | otherwise = inj $ LamF xy
+            where xy = x /\ y
+        in stdmeet m
+    
+    (\/) = let 
+        m :: LamF a -> LamF a -> TB LamF a
+        m (LamF x) (LamF y) 
+            | xy == bot = TBOT
+            | otherwise = inj $ LamF xy
+            where xy = x \/ y
+        in stdjoin m
+
+instance (Eq a, BoundedMeetSemilattice a) => Lattice (TB ApplF a) where
+    (/\) = let
+        m :: ApplF a -> ApplF a -> TB ApplF a
+        m (ApplF x1 y1) (ApplF x2 y2)
+            | xx == bot || yy == bot = TBOT
+            | otherwise = inj $ ApplF xx yy
+            where
+                xx = x1 /\ x2
+                yy = y1 /\ y2
+        in stdmeet m
+
+    (\/) = let
+        m :: ApplF a -> ApplF a -> TB ApplF a
+        m (ApplF x1 y1) (ApplF x2 y2)
+            | xx == bot || yy == bot = TBOT
+            | otherwise = inj $ ApplF xx yy
+            where
+                xx = x1 \/ x2
+                yy = y1 \/ y2
+        in stdjoin m
