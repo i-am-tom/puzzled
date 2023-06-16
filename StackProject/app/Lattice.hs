@@ -19,17 +19,19 @@ topp :: (Functor f) => Fix (TB f)
 topp = inject Top
 
 pattern Elem x = Inr (Inr x)
+pattern TTOP = Inl Top
+pattern TBOT = Inr (Inl Bot)
 
 instance (
       Functor f
     , Functor g
-    , Lattice (Fix (TB f))
-    , Lattice (Fix (TB g))) => 
-    Lattice (Fix (TB (f :+: g))) where
-    (In (Elem (Inl f1))) /\ (In (Elem (Inl f2))) = case (inject f1 /\ inject f2) of
-        (In (proj -> Just Bot)) -> inject Bot
-        (In (proj -> Just Top)) -> error "meeting two concrete functors should never return a top level top! (has to have at least top level constructor)"
-        (In (Elem ff)) -> In $ Elem ff
+    , Lattice ((TB f) a)
+    , Lattice ((TB g) a)) => 
+    Lattice ((TB (f :+: g)) a) where
+    (Elem (Inl f1)) /\ (Elem (Inl f2)) = case (inj f1 /\ inj f2) of
+        (TBOT) -> inj Bot
+        (TTOP) -> error "meeting two concrete functors should never return a top level top! (has to have at least top level constructor)"
+        (Elem ff) -> Elem ff
 
     {-}
     (Inr g1) /\ (Inr g2) = case (g1 /\ g2) of
