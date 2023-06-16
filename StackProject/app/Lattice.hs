@@ -25,33 +25,47 @@ pattern TBOT = Inr (Inl Bot)
 instance (
       Functor f
     , Functor g
-    , Lattice ((TB f) a)
-    , Lattice ((TB g) a)) => 
-    Lattice ((TB (f :+: g)) a) where
+    , Lattice (TB f a)
+    , Lattice (TB g a)) => 
+    Lattice (TB (f :+: g) a) where
     (Elem (Inl f1)) /\ (Elem (Inl f2)) = case (inj f1 /\ inj f2) of
         (TBOT) -> inj Bot
         (TTOP) -> error "meeting two concrete functors should never return a top level top! (has to have at least top level constructor)"
         (Elem ff) -> Elem ff
-
-    {-}
-    (Inr g1) /\ (Inr g2) = case (g1 /\ g2) of
-        (proj -> Just Bot) -> inj Bot
-        ff -> Inr ff
+    (Elem (Inl g1)) /\ (Elem (Inl g2)) = case (inj g1 /\ inj g2) of
+        (TBOT) -> inj Bot
+        (TTOP) -> error "meeting two concrete functors should never return a top level top! (has to have at least top level constructor)"
+        (Elem ff) -> Elem ff
     _ /\ _ = inj Bot
 
-    (Inl f1) \/ (Inl f2) = case (f1 \/ f2) of
-        (proj -> Just Bot) -> inj Bot --Maybe should never happen
-        ff -> Inl ff
-    (Inr g1) \/ (Inr g2) = case (g1 \/ g2) of
-        (proj -> Just Bot) -> inj Bot
-        ff -> Inr ff
+    (Elem (Inl f1)) \/ (Elem (Inl f2)) = case (inj f1 \/ inj f2) of
+        (TBOT) -> error "joining two concrete functors should never return a top level bot! (has to have at least top level constructor)"
+        (TTOP) -> inj Top
+        (Elem ff) -> Elem ff
+    (Elem (Inl g1)) \/ (Elem (Inl g2)) = case (inj g1 \/ inj g2) of
+        (TBOT) -> error "joining two concrete functors should never return a top level bot! (has to have at least top level constructor)"
+        (TTOP) -> inj Top
+        (Elem ff) -> Elem ff
     _ \/ _ = inj Top
-    -}
 
-instance (Lattice (f a), Lattice (g a)) => Lattice ((f :*: g) a) where
-    (f1 :*: g1) /\ (f2 :*: g2) = f1 /\ f2 :*: g1 /\ g2
+instance (Functor f, Functor g, Lattice (TB f a), Lattice (TB g a)) => Lattice (TB (f :*: g) a) where
+    TTOP /\ x = x
+    x /\ TTOP = x
+    TBOT /\ _ = TBOT
+    _ /\ TBOT = TBOT
+    (Elem (f1 :*: g1)) /\ (Elem (f2 :*: g2)) = case (inj @f @(TB f) f1 /\ inj f2, inj @g @(TB g) g1 /\ inj g2) of
+        (TBOT, _) -> TBOT
+        (_, TBOT) -> TBOT
+        (Elem ff, Elem gg)  -> inj $ ff :*: gg
 
-    (f1 :*: g1) \/ (f2 :*: g2) = f1 \/ f2 :*: g1 \/ g2
+    TTOP \/ _ = TTOP
+    _ \/ TTOP = TTOP
+    TBOT \/ x = x
+    x \/ TBOT = x
+    (Elem (f1 :*: g1)) \/ (Elem (f2 :*: g2)) = case (inj @f @(TB f) f1 \/ inj f2, inj @g @(TB g) g1 \/ inj g2) of
+        (TBOT, _) -> TBOT
+        (_, TBOT) -> TBOT
+        (Elem ff, Elem gg)  -> inj $ ff :*: gg
 
 instance (Lattice b) => Lattice (KF b a) where
     (KF x) /\ (KF y) = KF (x /\ y)
