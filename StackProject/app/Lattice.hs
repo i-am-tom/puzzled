@@ -72,6 +72,25 @@ instance (
             (Elem ff) -> Elem ff
         in stdjoin m
 
+instance (Functor f, Lattice (TB v a), Lattice (TB f (TB v a))) => Lattice (TB (f :.: v) a) where
+    (/\) = let
+        m :: (f :.: v) a -> (f :.: v) a -> TB (f :.: v) a
+        m (CIRC xf) (CIRC yf) = t xyf
+            where 
+                xyf = (Elem $ fmap Elem xf) /\ (Elem $ fmap Elem yf)
+                t :: TB f (TB v a) -> TB (f :.: v) a
+                t TTOP = TTOP
+                t TBOT = TBOT
+                t (Elem f) = k f
+                    where 
+                        --note: There can be no tops among the variables as they started as single elements
+                        --TODO: maybe make lattice for TB (f :.: TB v) a? might be a tad annoying but prolly makes more sense here...
+                        --Or maybe even...use the simpler version where you just go over the equality. Prolly we need the 
+                        --unification interface for functors anyway...
+                        k :: f (TB v a) -> TB f (v a)
+                        k = _
+        in stdmeet m
+
 instance (Functor f, Functor g, Lattice (TB f a), Lattice (TB g a)) => Lattice (TB (f :*: g) a) where
     (/\) = let
         m (f1 :*: g1) (f2 :*: g2) = case (inj @f @(TB f) f1 /\ inj f2, inj @g @(TB g) g1 /\ inj g2) of
