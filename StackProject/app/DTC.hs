@@ -12,7 +12,7 @@ foldF :: (Functor f) => Algebra f a -> Fix f -> a
 foldF alg (In f) = alg id $ fmap (foldF alg) f
 
 infix 1 :<:
-class (Functor f, Functor g) => f :<: g where
+class f :<: g where
     inj :: f a -> g a
     proj :: g a -> Maybe (f a)
 
@@ -64,13 +64,16 @@ data Wit1 = Wit1
 data Wit2 = Wit2
 
 class (Functor f) => Functor0 f where
-    transf0 :: f a -> f b
-    red0 :: b -> Algebra f b
+    intro0 :: f a
+    elim0 :: b -> f a -> b
 
 class (Functor f) => Functor1 f where
-    transf1 :: b -> f a -> f b
-    red1 :: (b -> b) -> Algebra f b
+    intro1 :: a -> f a
+    elim1 :: (a -> b) -> f a -> b
+
+fst1 :: Functor1 f => f a -> a
+fst1 = elim1 id
 
 class (Functor f) => Functor2 f where
-    transf2 :: b -> b -> f a -> f b
-    red2 :: (b -> b -> b) -> Algebra f b
+    intro2 :: a -> a -> f a
+    elim2 :: (a -> a -> b) -> f a -> b

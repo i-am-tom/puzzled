@@ -29,8 +29,8 @@ instance IDC a
 
 instance NewConstrDefVarMonad BoundedJoinSemilattice IO IORef where
     new = bvmNew top
-    read = bvmRead
-    write = bvmWrite
+    read = bvmRead 
+    write = bvmWrite 
 
 class ConstrainedReadVarMon c m v | m -> c where
     cread :: (c a) => v a -> m a

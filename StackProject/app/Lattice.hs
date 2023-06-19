@@ -16,6 +16,14 @@ class (Lattice a) => BoundedMeetSemilattice a where
 data Top a = Top deriving (Show, Eq, Ord, Functor)
 data Bot a = Bot deriving (Show, Eq, Ord, Functor)
 
+instance Functor0 Top where
+    intro0 = Top
+    elim0 b _ = b
+
+instance Functor0 Bot where
+    intro0 = Bot
+    elim0 b _ = b
+
 type TB f = Top :+: Bot :+: f 
 
 stdmeet :: (f a -> f a -> TB f a) -> TB f a -> TB f a -> TB f a
@@ -43,6 +51,9 @@ pattern TTOP = Inl Top
 
 pattern TBOT :: TB f a
 pattern TBOT = Inr (Inl Bot)
+
+instance (Lattice (f (Fix f))) => Lattice (Fix f) where
+    (In f) /\ (In g) = In (f /\ g)
 
 instance (
       Functor f
@@ -72,24 +83,8 @@ instance (
             (Elem ff) -> Elem ff
         in stdjoin m
 
-instance (Functor f, Lattice (TB v a), Lattice (TB f (TB v a))) => Lattice (TB (f :.: v) a) where
-    (/\) = let
-        m :: (f :.: v) a -> (f :.: v) a -> TB (f :.: v) a
-        m (CIRC xf) (CIRC yf) = t xyf
-            where 
-                xyf = (Elem $ fmap Elem xf) /\ (Elem $ fmap Elem yf)
-                t :: TB f (TB v a) -> TB (f :.: v) a
-                t TTOP = TTOP
-                t TBOT = TBOT
-                t (Elem f) = k f
-                    where 
-                        --note: There can be no tops among the variables as they started as single elements
-                        --TODO: maybe make lattice for TB (f :.: TB v) a? might be a tad annoying but prolly makes more sense here...
-                        --Or maybe even...use the simpler version where you just go over the equality. Prolly we need the 
-                        --unification interface for functors anyway...
-                        k :: f (TB v a) -> TB f (v a)
-                        k = _
-        in stdmeet m
+instance (Functor f, Lattice (v a), forall b. Lattice b => Lattice (f b)) => Lattice ((f :.: v) a) where
+    (/\) (CIRC xf) (CIRC yf) = CIRC $ xf /\ yf --TODO: this is too much of a no-brainer. Composition of lattices needs to be done by hand!
 
 instance (Functor f, Functor g, Lattice (TB f a), Lattice (TB g a)) => Lattice (TB (f :*: g) a) where
     (/\) = let
@@ -106,7 +101,6 @@ instance (Functor f, Functor g, Lattice (TB f a), Lattice (TB g a)) => Lattice (
             (Elem ff, Elem gg)  -> inj $ ff :*: gg
         in stdjoin m
 
---TODO: Does not propagate bot upwards!
 instance (Eq b, BoundedMeetSemilattice b) => Lattice (TB (KF b) a) where
     (/\) = let
         m (KF x) (KF y)
@@ -120,7 +114,6 @@ instance (Eq b, BoundedMeetSemilattice b) => Lattice (TB (KF b) a) where
             | otherwise = inj $ KF (x \/ y)
         in stdjoin m
 
---TODO: Does not propagate bot upwards!
 instance (Eq a, BoundedMeetSemilattice a) => Lattice (TB KRec a) where
     (/\) = let
         m (KRec x) (KRec y)
@@ -137,17 +130,25 @@ instance (Eq a, BoundedMeetSemilattice a) => Lattice (TB KRec a) where
 instance (Lattice (f a), Top :<: f) => BoundedJoinSemilattice (f a) where
     top = inj Top
 
+instance (BoundedJoinSemilattice (f (Fix f))) => BoundedJoinSemilattice (Fix f) where
+    top = In $ top
+
 instance (Lattice (f a), Bot :<: f) => BoundedMeetSemilattice (f a) where
     bot = inj Bot
 
+instance (BoundedMeetSemilattice (f (Fix f))) => BoundedMeetSemilattice (Fix f) where
+    bot = In $ bot
+
 instance Lattice (TB DeBVarF a) where
     (/\) = let
+        m :: DeBVarF a -> DeBVarF a -> TB DeBVarF a
         m (DeBVarF x) (DeBVarF y)
             | x /= y = TBOT
             | otherwise = inj $ DeBVarF x
         in stdmeet m
 
     (\/) = let
+        m :: DeBVarF a -> DeBVarF a -> TB DeBVarF a
         m (DeBVarF x) (DeBVarF y)
             | x /= y = TTOP
             | otherwise = inj $ DeBVarF x

@@ -17,7 +17,7 @@ class SwitchContext f m where
     switchContext :: f (m a) -> m (f a)
 
 --TODO: Could some of these Instances be derived by the FunctorN classes?
-instance (Functor m, SwitchContext f m, SwitchContext g m) => SwitchContext (f :+: g) m where
+instance {-# OVERLAPPING #-} (Functor m, SwitchContext f m, SwitchContext g m) => SwitchContext (f :+: g) m where
     switchContext (Inl f) = Inl <$> switchContext f
     switchContext (Inr g) = Inr <$> switchContext g
 
@@ -27,16 +27,19 @@ instance (Applicative m, SwitchContext f m, SwitchContext g m) => SwitchContext 
 instance (Functor m) => SwitchContext KRec m where
     switchContext (KRec m) = KRec <$> m
 
-instance (Applicative m) => SwitchContext DeBVarF m where
+instance {-# OVERLAPPING #-}  (Applicative m, Functor0 f) => SwitchContext f m where
+    switchContext _ = pure intro0
+
+instance {-# OVERLAPPING #-} (Applicative m) => SwitchContext DeBVarF m where
     switchContext (DeBVarF x) = pure (DeBVarF x)
 
-instance (Functor m) => SwitchContext LamF m where
+instance {-# OVERLAPPING #-} (Functor m) => SwitchContext LamF m where
     switchContext (LamF m) = LamF <$> m
 
-instance (Applicative m) => SwitchContext ApplF m where
+instance {-# OVERLAPPING #-} (Applicative m) => SwitchContext ApplF m where
     switchContext (ApplF a b) = ApplF <$> a <*> b
 
-bakeContext :: (
+bakeContext :: forall f m v c . (
       Monad m
     , Functor f
     , c (Fix (f :.: v))
