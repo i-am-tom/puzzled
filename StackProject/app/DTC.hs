@@ -34,16 +34,16 @@ foldCM :: (Monad m, Functor f) => (v (Fix (f :.: v)) -> m (Fix (f :.: v))) -> Al
 foldCM read alg (In (CIRC f)) = alg (foldCM read alg <=< read) f
 
 
-instance (Functor f) => f :<: f where
+instance f :<: f where
     inj = id
     proj = Just
 
-instance {-# OVERLAPPING #-} (Functor f, Functor g) => f :<: (f :+: g) where
+instance {-# OVERLAPPING #-} f :<: (f :+: g) where
     inj = Inl
     proj (Inl f) = Just f
     proj (Inr _) = Nothing
 
-instance (Functor g, f :<: h) => f :<: (g :+: h) where
+instance (f :<: h) => f :<: (g :+: h) where
     inj = Inr . inj
     proj (Inl _) = Nothing
     proj (Inr f) = proj f
@@ -71,9 +71,15 @@ class (Functor f) => Functor1 f where
     intro1 :: a -> f a
     elim1 :: (a -> b) -> f a -> b
 
-fst1 :: Functor1 f => f a -> a
-fst1 = elim1 id
+fstF1 :: Functor1 f => f a -> a
+fstF1 = elim1 id
 
 class (Functor f) => Functor2 f where
     intro2 :: a -> a -> f a
     elim2 :: (a -> a -> b) -> f a -> b
+
+fstF2 :: Functor2 f => f a -> a
+fstF2 = elim2 const
+
+sndF2 :: Functor2 f => f a -> a
+sndF2 = elim2 (flip const)

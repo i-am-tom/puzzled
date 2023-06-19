@@ -13,19 +13,18 @@ import Data.IORef
 
 reduction :: forall c m v . (
       Monad m
-    , c (Fix (TB LambdaF :.: v))
-    , NewConstrDefVarMonad c m v) =>
+    , c (Fix (TB LambdaF :.: TB v))
+    , NewConstrDefVarMonad c m (TB v)) =>
     m (Fix (TB LambdaF))
 reduction = do
     expr <- (lam' (var' @(TB LambdaF) 0)) <^>* (var' 1)
     bakeContext @(TB LambdaF) =<< read expr
 
-{-}
-instance (Top :<: f) => Top :<: (TB f :.: v) where
+
+instance Top :<: (TB f :.: v) where
     inj Top = CIRC TTOP
     proj (CIRC TTOP) = Just Top
     proj _ = Nothing
-    -}
 
 instance Lattice (TB IORef a) where
     x /\ y 
@@ -35,5 +34,5 @@ instance Lattice (TB IORef a) where
         | x == y = x
         | otherwise = TTOP
 
-test :: IO (Fix (TB LambdaF))
-test = reduction @_ @_ @(IORef)
+concreteReductionTest :: IO (Fix (TB LambdaF))
+concreteReductionTest = reduction

@@ -2,6 +2,7 @@ module Lattice where
 
 import DTC
 import Lambda
+import Data.Maybe
 
 class Lattice a where
     (/\) :: a -> a -> a
@@ -9,9 +10,11 @@ class Lattice a where
 
 class (Lattice a) => BoundedJoinSemilattice a where
     top :: a
+    isTop :: a -> Bool
 
 class (Lattice a) => BoundedMeetSemilattice a where
     bot :: a
+    isBot :: a -> Bool
 
 data Top a = Top deriving (Show, Eq, Ord, Functor)
 data Bot a = Bot deriving (Show, Eq, Ord, Functor)
@@ -83,10 +86,10 @@ instance (
             (Elem ff) -> Elem ff
         in stdjoin m
 
-instance (Functor f, Lattice (v a), forall b. Lattice b => Lattice (f b)) => Lattice ((f :.: v) a) where
+instance (Lattice (f (v a))) => Lattice ((f :.: v) a) where
     (/\) (CIRC xf) (CIRC yf) = CIRC $ xf /\ yf --TODO: this is too much of a no-brainer. Composition of lattices needs to be done by hand!
 
-instance (Functor f, Functor g, Lattice (TB f a), Lattice (TB g a)) => Lattice (TB (f :*: g) a) where
+instance (Lattice (TB f a), Lattice (TB g a)) => Lattice (TB (f :*: g) a) where
     (/\) = let
         m (f1 :*: g1) (f2 :*: g2) = case (inj @f @(TB f) f1 /\ inj f2, inj @g @(TB g) g1 /\ inj g2) of
             (TBOT, _) -> TBOT
@@ -101,43 +104,47 @@ instance (Functor f, Functor g, Lattice (TB f a), Lattice (TB g a)) => Lattice (
             (Elem ff, Elem gg)  -> inj $ ff :*: gg
         in stdjoin m
 
-instance (Eq b, BoundedMeetSemilattice b) => Lattice (TB (KF b) a) where
+instance (BoundedMeetSemilattice b) => Lattice (TB (KF b) a) where
     (/\) = let
         m (KF x) (KF y)
-            | (x /\ y) == bot = TBOT
+            | isBot (x /\ y) = TBOT
             | otherwise = inj $ KF (x /\ y)
         in stdmeet m
 
     (\/) = let
         m (KF x) (KF y)
-            | (x \/ y) == bot = TBOT
+            | isBot (x \/ y) = TBOT
             | otherwise = inj $ KF (x \/ y)
         in stdjoin m
 
-instance (Eq a, BoundedMeetSemilattice a) => Lattice (TB KRec a) where
+instance (BoundedMeetSemilattice a) => Lattice (TB KRec a) where
     (/\) = let
         m (KRec x) (KRec y)
-            | (x /\ y) == bot = TBOT
+            | isBot (x /\ y) = TBOT
             | otherwise = inj $ KRec (x /\ y)
         in stdmeet m
 
     (\/) = let
         m (KRec x) (KRec y)
-            | (x \/ y) == bot = TBOT
+            | isBot (x \/ y) = TBOT
             | otherwise = inj $ KRec (x \/ y)
         in stdjoin m
 
 instance (Lattice (f a), Top :<: f) => BoundedJoinSemilattice (f a) where
     top = inj Top
+    isTop b = isJust (proj @Top b)
 
 instance (BoundedJoinSemilattice (f (Fix f))) => BoundedJoinSemilattice (Fix f) where
     top = In $ top
+    isTop (In x) = isTop x
 
 instance (Lattice (f a), Bot :<: f) => BoundedMeetSemilattice (f a) where
     bot = inj Bot
+    isBot b = isJust (proj @Bot b)
 
 instance (BoundedMeetSemilattice (f (Fix f))) => BoundedMeetSemilattice (Fix f) where
     bot = In $ bot
+    isBot (In x) = isBot x 
 
 instance Lattice (TB DeBVarF a) where
     (/\) = let
@@ -154,11 +161,11 @@ instance Lattice (TB DeBVarF a) where
             | otherwise = inj $ DeBVarF x
         in stdjoin m
 
-instance (Eq a, BoundedMeetSemilattice a) => Lattice (TB LamF a) where
+instance (BoundedMeetSemilattice a) => Lattice (TB LamF a) where
     (/\) = let 
         m :: LamF a -> LamF a -> TB LamF a
         m (LamF x) (LamF y) 
-            | xy == bot = TBOT
+            | isBot xy = TBOT
             | otherwise = inj $ LamF xy
             where xy = x /\ y
         in stdmeet m
@@ -166,16 +173,16 @@ instance (Eq a, BoundedMeetSemilattice a) => Lattice (TB LamF a) where
     (\/) = let 
         m :: LamF a -> LamF a -> TB LamF a
         m (LamF x) (LamF y) 
-            | xy == bot = TBOT
+            | isBot xy = TBOT
             | otherwise = inj $ LamF xy
             where xy = x \/ y
         in stdjoin m
 
-instance (Eq a, BoundedMeetSemilattice a) => Lattice (TB ApplF a) where
+instance (BoundedMeetSemilattice a) => Lattice (TB ApplF a) where
     (/\) = let
         m :: ApplF a -> ApplF a -> TB ApplF a
         m (ApplF x1 y1) (ApplF x2 y2)
-            | xx == bot || yy == bot = TBOT
+            | isBot xx || isBot yy = TBOT
             | otherwise = inj $ ApplF xx yy
             where
                 xx = x1 /\ x2
@@ -185,7 +192,7 @@ instance (Eq a, BoundedMeetSemilattice a) => Lattice (TB ApplF a) where
     (\/) = let
         m :: ApplF a -> ApplF a -> TB ApplF a
         m (ApplF x1 y1) (ApplF x2 y2)
-            | xx == bot || yy == bot = TBOT
+            | isBot xx || isBot yy = TBOT
             | otherwise = inj $ ApplF xx yy
             where
                 xx = x1 \/ x2
