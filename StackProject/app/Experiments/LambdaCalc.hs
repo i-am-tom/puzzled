@@ -4,11 +4,12 @@ module Experiments.LambdaCalc where
 import Prelude hiding (read)
 import NewConstrDefVarMonad
 import LambdaVarMonad
-import Lambda (LambdaF)
+import Lambda
 import DTC
 import Lattice
 import Data.Maybe
 import Data.IORef
+import DTCFunctions.SwitchContext
 
 reduction :: forall c m v . (
       Monad m
@@ -17,7 +18,8 @@ reduction :: forall c m v . (
     m (Fix (TB LambdaF))
 reduction = do
     expr <- (lam' (var' @(TB LambdaF) 0)) <^>* (var' 1)
-    bakeContext @(TB LambdaF) =<< read expr
+    evl <- read expr >>= fmap res . foldFNCD (switchAlg evalStepAlg) 
+    bakeContext @(TB LambdaF) evl -- =<< read expr
 
 
 instance Top :<: (TB f :.: v) where

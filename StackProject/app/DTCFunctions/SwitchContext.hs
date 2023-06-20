@@ -27,3 +27,6 @@ instance (Functor m) => SwitchContext KRec m where
 
 instance {-# OVERLAPPING #-}  (Applicative m, Functor0 f) => SwitchContext f m where
     switchContext _ = pure intro0
+
+switchAlg :: (Functor m, Functor f, SwitchContext f m) => Algebra f a -> Algebra f (m a)
+switchAlg alg r f = fmap (alg id) $ switchContext $ fmap r f
