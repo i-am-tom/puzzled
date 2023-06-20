@@ -6,7 +6,6 @@ import NewConstrDefVarMonad
 import LambdaVarMonad
 import Lambda (LambdaF)
 import DTC
-import DTCFunctions.BakeContext
 import Lattice
 import Data.Maybe
 import Data.IORef

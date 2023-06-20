@@ -3,6 +3,7 @@ module Lambda where
 import DTC
 import Text.Show.Combinators
 import Data.Kind
+import DTCFunctions.SwitchContext
 
 data DeBVarF a = DeBVarF Int deriving (Eq, Ord, Functor)
 data LamF a = LamF a deriving (Eq, Ord, Functor)
@@ -116,6 +117,16 @@ instance (KF b :<: h) => EvalStep (KF b) (Fix h) where
         orig = In $ inj $ fmap (orig . r) kf ,
         res = In $ inj $ fmap (res . r) kf
     }
+
+instance {-# OVERLAPPING #-} (Applicative m) => SwitchContext DeBVarF m where
+    switchContext (DeBVarF x) = pure (DeBVarF x)
+
+instance {-# OVERLAPPING #-} (Functor m) => SwitchContext LamF m where
+    switchContext (LamF m) = LamF <$> m
+
+instance {-# OVERLAPPING #-} (Applicative m) => SwitchContext ApplF m where
+    switchContext (ApplF a b) = ApplF <$> a <*> b
+
 
 {-
 data LamR rep b where

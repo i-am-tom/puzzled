@@ -10,6 +10,7 @@ import Data.Kind
 import BaseVarMonad ()
 import Lattice
 import BaseVarMonadRenamed (bvmRead)
+import DTCFunctions.SwitchContext
 
 class NewConstrDefVarMonad c m v | m -> c , m -> v where
     new :: (c a) => m (v a)
@@ -48,3 +49,12 @@ foldFNCD :: (
     , ConstrainedReadVarMon c m v) => 
     Algebra f (m a) -> Fix (f :.: v) -> m a
 foldFNCD = foldCM cread
+
+bakeContext :: forall f m v c . (
+      Monad m
+    , Functor f
+    , c (Fix (f :.: v))
+    , SwitchContext f m
+    , ConstrainedReadVarMon c m v) => 
+    Fix (f :.: v) -> m (Fix f)
+bakeContext = foldFNCD $ \r -> (In <$>) . switchContext . fmap r

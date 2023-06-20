@@ -1,9 +1,7 @@
-module DTCFunctions.BakeContext where
+module DTCFunctions.SwitchContext where
 
 import DTC
 import Control.Monad
-import NewConstrDefVarMonad
-import Lambda
 
 {-}
 class BakeContext f m v where
@@ -29,21 +27,3 @@ instance (Functor m) => SwitchContext KRec m where
 
 instance {-# OVERLAPPING #-}  (Applicative m, Functor0 f) => SwitchContext f m where
     switchContext _ = pure intro0
-
-instance {-# OVERLAPPING #-} (Applicative m) => SwitchContext DeBVarF m where
-    switchContext (DeBVarF x) = pure (DeBVarF x)
-
-instance {-# OVERLAPPING #-} (Functor m) => SwitchContext LamF m where
-    switchContext (LamF m) = LamF <$> m
-
-instance {-# OVERLAPPING #-} (Applicative m) => SwitchContext ApplF m where
-    switchContext (ApplF a b) = ApplF <$> a <*> b
-
-bakeContext :: forall f m v c . (
-      Monad m
-    , Functor f
-    , c (Fix (f :.: v))
-    , SwitchContext f m
-    , ConstrainedReadVarMon c m v) => 
-    Fix (f :.: v) -> m (Fix f)
-bakeContext = foldFNCD $ \r -> (In <$>) . switchContext . fmap r
