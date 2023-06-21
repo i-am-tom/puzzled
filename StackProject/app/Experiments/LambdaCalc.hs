@@ -18,13 +18,18 @@ reduction :: forall c m v . (
     m (Fix (TB LambdaF))
 reduction = do
     expr <- (lam' (var' @(TB LambdaF) 0)) <^>* (var' 1)
-    --evl <- read expr >>= fmap res . foldFNCD (switchAlg evalStepAlg) 
-    bakeContext @(TB LambdaF) =<< read expr --evl -- =<< read expr
+    evl <- read expr >>= fmap res . foldFNCD (switchAlg evalStepAlg) 
+    bakeContext @(TB LambdaF) evl -- =<< read expr
 
 
 instance Top :<: (TB f :.: v) where
     inj Top = CIRC TTOP
     proj (CIRC TTOP) = Just Top
+    proj _ = Nothing
+
+instance Bot :<: (TB f :.: v) where
+    inj Bot = CIRC TBOT
+    proj (CIRC TBOT) = Just Bot
     proj _ = Nothing
 
 instance Lattice (TB IORef a) where

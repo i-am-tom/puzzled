@@ -73,19 +73,19 @@ eval f
     | otherwise = eval f'
     where f' = evalStep f
 
-instance (DeBVarF :<: f) => EvalStep DeBVarF (Fix f) where
+instance {-# OVERLAPPING #-} (DeBVarF :<: f) => EvalStep DeBVarF (Fix f) where
     evalStepAlg _ (DeBVarF n) = EvalRes {
         orig = var n,
         res = var n
     }
 
-instance (LamF :<: f) => EvalStep LamF (Fix f) where
+instance {-# OVERLAPPING #-} (LamF :<: f) => EvalStep LamF (Fix f) where
     evalStepAlg r (LamF e) = EvalRes {
         orig = lam (orig $ r e),
         res = lam (orig $ r e)
     }
 
-instance (Functor f, ApplF :<: f, LamF :<: f, Exchange f (Fix f)) => EvalStep ApplF (Fix f) where
+instance {-# OVERLAPPING #-} (Functor f, ApplF :<: f, LamF :<: f, Exchange f (Fix f)) => EvalStep ApplF (Fix f) where
     evalStepAlg r (ApplF a b) = EvalRes {
         orig = (orig $ r a) <^> (orig $ r b),
         res = case res (r a) of
@@ -93,19 +93,25 @@ instance (Functor f, ApplF :<: f, LamF :<: f, Exchange f (Fix f)) => EvalStep Ap
             _ -> (orig $ r a) <^> (orig $ r b)
     }
 
-instance (EvalStep f (Fix h), EvalStep g (Fix h)) => 
+instance {-# OVERLAPPING #-} (Functor0 f, f :<: h) => EvalStep f (Fix h) where
+    evalStepAlg r f = EvalRes {
+        orig = inject (intro0 @f) ,
+        res = inject (intro0 @f)
+    }
+
+instance {-# OVERLAPPING #-} (EvalStep f (Fix h), EvalStep g (Fix h)) => 
     EvalStep (f :+: g) (Fix h) where
     evalStepAlg r (Inl f) = evalStepAlg r f
     evalStepAlg r (Inr g) = evalStepAlg r g
 
-instance (Functor g, Functor f, f :.: g :<: h) => 
+instance {-# OVERLAPPING #-} (Functor g, Functor f, f :.: g :<: h) => 
     EvalStep (f :.: g) (Fix h) where
     evalStepAlg r (CIRC fg) = EvalRes {
         orig = In $ inj $ CIRC $ fmap (fmap (orig . r)) fg ,
         res = In $ inj $ CIRC $ fmap (fmap (res . r)) fg
     }
 
-instance (Functor g, Functor f, f :*: g :<: h) =>
+instance {-# OVERLAPPING #-} (Functor g, Functor f, f :*: g :<: h) =>
     EvalStep (f :*: g) (Fix h) where
     evalStepAlg r (fa :*: ga) = EvalRes {
         orig = In $ inj $ (fmap (orig . r) fa) :*: (fmap (orig . r) ga) ,
