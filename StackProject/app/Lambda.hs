@@ -39,22 +39,28 @@ exchange = exchange' 0
 exchange' :: (Functor f, Exchange f (Fix f)) => Int -> Fix f -> Fix f -> Fix f
 exchange' n e x = foldF (exchangeAlg x) e $ n
 
-instance (DeBVarF :<: f) => Exchange DeBVarF (Fix f) where
+instance {-# OVERLAPPING #-} (DeBVarF :<: f) => Exchange DeBVarF (Fix f) where
     exchangeAlg x _ (DeBVarF n') n
         | n' == n = x
         | otherwise = var n'
 
-instance (LamF :<: f) => Exchange LamF (Fix f) where
+instance {-# OVERLAPPING #-} (LamF :<: f) => Exchange LamF (Fix f) where
     exchangeAlg _ r (LamF e) n = lam $ r e (n + 1)
 
-instance (ApplF :<: f) => Exchange ApplF (Fix f) where
+instance {-# OVERLAPPING #-} (ApplF :<: f) => Exchange ApplF (Fix f) where
     exchangeAlg _ r (ApplF a b) n = (r a n) <^> (r b n)
 
 
-instance (Exchange f (Fix h), Exchange g (Fix h)) => Exchange (f :+: g) (Fix h) where
+instance {-# OVERLAPPING #-} (Exchange f (Fix h), Exchange g (Fix h)) => Exchange (f :+: g) (Fix h) where
     exchangeAlg x r (Inl f) n = exchangeAlg x r f n
     exchangeAlg x r (Inr g) n = exchangeAlg x r g n
 
+
+instance {-# OVERLAPPING #-} (Functor f, Functor g, Exchange f (Fix h)) => Exchange (f :.: g) (Fix h) where
+    exchangeAlg x r (CIRC fg) n = exchangeAlg x undefined fg n
+
+instance {-# OVERLAPPING #-} (Functor0 f, f :<: h) => Exchange f (Fix h) where
+    exchangeAlg x r f n = inject (intro0 @f)
 
 data EvalRes a = EvalRes {
     orig :: a,
@@ -73,19 +79,19 @@ eval f
     | otherwise = eval f'
     where f' = evalStep f
 
-instance (DeBVarF :<: f) => EvalStep DeBVarF (Fix f) where
+instance {-# OVERLAPPING #-}  (DeBVarF :<: f) => EvalStep DeBVarF (Fix f) where
     evalStepAlg _ (DeBVarF n) = EvalRes {
         orig = var n,
         res = var n
     }
 
-instance (LamF :<: f) => EvalStep LamF (Fix f) where
+instance {-# OVERLAPPING #-} (LamF :<: f) => EvalStep LamF (Fix f) where
     evalStepAlg r (LamF e) = EvalRes {
         orig = lam (orig $ r e),
         res = lam (orig $ r e)
     }
 
-instance (Functor f, ApplF :<: f, LamF :<: f, Exchange f (Fix f)) => EvalStep ApplF (Fix f) where
+instance {-# OVERLAPPING #-} (Functor f, ApplF :<: f, LamF :<: f, Exchange f (Fix f)) => EvalStep ApplF (Fix f) where
     evalStepAlg r (ApplF a b) = EvalRes {
         orig = (orig $ r a) <^> (orig $ r b),
         res = case res (r a) of
@@ -93,7 +99,7 @@ instance (Functor f, ApplF :<: f, LamF :<: f, Exchange f (Fix f)) => EvalStep Ap
             _ -> (orig $ r a) <^> (orig $ r b)
     }
 
-instance (EvalStep f (Fix h), EvalStep g (Fix h)) => 
+instance {-# OVERLAPPING #-} (EvalStep f (Fix h), EvalStep g (Fix h)) => 
     EvalStep (f :+: g) (Fix h) where
     evalStepAlg r (Inl f) = evalStepAlg r f
     evalStepAlg r (Inr g) = evalStepAlg r g
@@ -117,6 +123,8 @@ instance (KF b :<: h) => EvalStep (KF b) (Fix h) where
         orig = In $ inj $ fmap (orig . r) kf ,
         res = In $ inj $ fmap (res . r) kf
     }
+
+instance {-# OVERLAPPING #-} (Functor0 f, f :<: h) => EvalStep f (Fix h) where
 
 instance {-# OVERLAPPING #-} (Applicative m) => SwitchContext DeBVarF m where
     switchContext (DeBVarF x) = pure (DeBVarF x)
