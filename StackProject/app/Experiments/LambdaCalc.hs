@@ -18,8 +18,8 @@ reduction :: forall c m v . (
     m (Fix (TB LambdaF))
 reduction = do
     expr <- (lam' (var' @(TB LambdaF) 0)) <^>* (var' 1)
-    evl <- read expr >>= fmap res . foldFNCD (switchAlg evalStepAlg) 
-    bakeContext @(TB LambdaF) evl -- =<< read expr
+    --evl <- read expr >>= fmap res . foldFNCD (switchAlg evalStepAlg) 
+    bakeContext @(TB LambdaF) =<< read expr --evl -- =<< read expr
 
 
 instance Top :<: (TB f :.: v) where

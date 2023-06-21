@@ -57,11 +57,10 @@ pattern TBOT = Inr (Inl Bot)
 
 instance (Lattice (f (Fix f))) => Lattice (Fix f) where
     (In f) /\ (In g) = In (f /\ g)
+    (In f) \/ (In g) = In (f \/ g)
 
 instance (
-      Functor f
-    , Functor g
-    , Lattice (TB f a)
+      Lattice (TB f a)
     , Lattice (TB g a)) => 
     Lattice (TB (f :+: g) a) where
     (/\) = let 
@@ -73,6 +72,7 @@ instance (
             (TBOT) -> inj Bot
             (TTOP) -> error "meeting two concrete functors should never return a top level top! (has to have at least top level constructor)"
             (Elem ff) -> Elem ff
+        m _ _ = TBOT
         in stdmeet m
 
     (\/) = let 
@@ -84,6 +84,7 @@ instance (
             (TBOT) -> error "joining two concrete functors should never return a top level bot! (has to have at least top level constructor)"
             (TTOP) -> inj Top
             (Elem ff) -> Elem ff
+        m _ _ = TTOP
         in stdjoin m
 
 instance (Lattice (f (v a))) => Lattice ((f :.: v) a) where
