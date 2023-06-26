@@ -2,6 +2,7 @@ module DTCFunctions.SwitchContext where
 
 import DTC
 import Control.Monad
+import Data.Functor.Identity
 
 {-}
 class BakeContext f m v where
@@ -28,5 +29,16 @@ instance (Functor m) => SwitchContext KRec m where
 instance {-# OVERLAPPING #-}  (Applicative m, Functor0 f) => SwitchContext f m where
     switchContext _ = pure intro0
 
-switchAlg :: (Functor m, Functor f, SwitchContext f m) => Algebra f a -> Algebra f (m a)
+switchAlg :: forall m f a. (Functor m, Functor f, SwitchContext f m) => 
+    Algebra f a -> Algebra f (m a)
 switchAlg alg r f = fmap (alg id) $ switchContext $ fmap r f
+
+switchAlgRead :: (Monad m, Functor f, SwitchContext f m) => 
+    (forall a. v a -> m a) -> Algebra f a -> Algebra (f :.: v) (m a)
+switchAlgRead read alg r (CIRC fv) = fmap (alg id) $ switchContext $ fmap (r <=< read) fv
+
+class ContextFold f g m where
+    foldC :: Algebra f a -> Fix g -> m a
+
+instance (Functor f) => ContextFold f f Identity where
+    foldC alg = foldF (\r -> Identity . alg (runIdentity . r))
