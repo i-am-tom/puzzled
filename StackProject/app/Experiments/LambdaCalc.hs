@@ -10,6 +10,7 @@ import Lattice
 import Data.Maybe
 import Data.IORef
 import DTCFunctions.SwitchContext
+import qualified Data.Type.Bool
 
 reduction :: forall c m v . (
       Monad m
@@ -18,8 +19,11 @@ reduction :: forall c m v . (
     m (Fix (TB LambdaF))
 reduction = do
     expr <- (lam' (var' @(TB LambdaF) 0)) <^>* (var' 1)
-    evl <- read expr >>= fmap res . foldFNCD (switchAlg evalStepAlg) 
-    bakeContext @(TB LambdaF) evl -- =<< read expr
+    --TODO: Algebra gives the full fix type that needs to be folded over in the algebra.
+    --need to get some representation of something that can use the monadic fold.
+    --maybe a type class for the exchange?
+    --evl <- read expr >>= \e -> fmap res . foldFNCD (switchAlg @m @(TB LambdaF) evalStepAlg) $ e
+    bakeContext @(TB LambdaF) =<< read expr
 
 
 instance Top :<: (TB f :.: v) where

@@ -61,67 +61,74 @@ data EvalRes a = EvalRes {
     res :: a
 }
 
-class EvalStep f a where
-    evalStepAlg :: Algebra f (EvalRes a)
+class EvalStep f m a where
+    evalStepAlg :: Algebra f (EvalRes (m a))
 
-evalStep :: (Functor f, EvalStep f (Fix f)) => Fix f -> Fix f
+evalStep :: (Functor f, EvalStep f m (Fix f)) => Fix f -> m (Fix f)
 evalStep = res . foldF evalStepAlg
 
-eval :: (Functor f, EvalStep f (Fix f), Eq (Fix f)) => Fix f -> Fix f
+eval :: (Functor f, EvalStep f m (Fix f), Eq (Fix f)) => Fix f -> m (Fix f)
 eval f 
     | f == f' = f'
     | otherwise = eval f'
     where f' = evalStep f
 
-instance {-# OVERLAPPING #-} (DeBVarF :<: f) => EvalStep DeBVarF (Fix f) where
+instance {-# OVERLAPPING #-} (DeBVarF :<: f) => EvalStep DeBVarF m (Fix f) where
     evalStepAlg _ (DeBVarF n) = EvalRes {
         orig = var n,
         res = var n
     }
 
-instance {-# OVERLAPPING #-} (LamF :<: f) => EvalStep LamF (Fix f) where
+instance {-# OVERLAPPING #-} (LamF :<: f) => EvalStep LamF m (Fix f) where
     evalStepAlg r (LamF e) = EvalRes {
         orig = lam (orig $ r e),
         res = lam (orig $ r e)
     }
 
-instance {-# OVERLAPPING #-} (Functor f, ApplF :<: f, LamF :<: f, Exchange f (Fix f)) => EvalStep ApplF (Fix f) where
+--Here, the Functor f call is problematic!
+instance {-# OVERLAPPING #-} (ContextFold f g m, ApplF :<: g, LamF :<: g, Exchange f (Fix f)) => 
+    EvalStep ApplF m (Fix g) where
     evalStepAlg r (ApplF a b) = EvalRes {
         orig = (orig $ r a) <^> (orig $ r b),
         res = case res (r a) of
-            In (proj -> Just (LamF e)) -> exchange' 1 e (orig $ r b)
-            _ -> (orig $ r a) <^> (orig $ r b)
+            In (proj -> Just (LamF e)) -> _ --exchange' 1 e (orig $ r b)
+            _ -> (<^>) <$> (orig $ r a) <*> (orig $ r b)
     }
 
-instance {-# OVERLAPPING #-} (Functor0 f, f :<: h) => EvalStep f (Fix h) where
+instance {-# OVERLAPPING #-} (Applicative m, Functor0 f, f :<: h) => EvalStep f m (Fix h) where
     evalStepAlg r f = EvalRes {
-        orig = inject (intro0 @f) ,
-        res = inject (intro0 @f)
+        orig = pure $ inject (intro0 @f) ,
+        res = pure $ inject (intro0 @f)
     }
 
-instance {-# OVERLAPPING #-} (EvalStep f (Fix h), EvalStep g (Fix h)) => 
-    EvalStep (f :+: g) (Fix h) where
+instance {-# OVERLAPPING #-} (EvalStep f m (Fix h), EvalStep g  m(Fix h)) => 
+    EvalStep (f :+: g) m (Fix h) where
     evalStepAlg r (Inl f) = evalStepAlg r f
     evalStepAlg r (Inr g) = evalStepAlg r g
 
-instance {-# OVERLAPPING #-} (Functor g, Functor f, f :.: g :<: h) => 
-    EvalStep (f :.: g) (Fix h) where
+instance {-# OVERLAPPING #-} (
+      SwitchContext f m
+    , SwitchContext g m 
+    , Functor g
+    , Functor f
+    , f :.: g :<: h) => 
+    EvalStep (f :.: g) m (Fix h) where
     evalStepAlg r (CIRC fg) = EvalRes {
-        orig = In $ inj $ CIRC $ fmap (fmap (orig . r)) fg ,
-        res = In $ inj $ CIRC $ fmap (fmap (res . r)) fg
+        orig = inject . CIRC <$> switchContext (fmap (switchContext . fmap (orig . r)) fg) ,
+        res = inject . CIRC <$> switchContext (fmap (switchContext . fmap (res . r)) fg)
     }
 
 instance {-# OVERLAPPING #-} (Functor g, Functor f, f :*: g :<: h) =>
-    EvalStep (f :*: g) (Fix h) where
+    EvalStep (f :*: g) m (Fix h) where
     evalStepAlg r (fa :*: ga) = EvalRes {
-        orig = In $ inj $ (fmap (orig . r) fa) :*: (fmap (orig . r) ga) ,
-        res = In $ inj $ (fmap (res . r) fa) :*: (fmap (res . r) ga)
+        orig = inject <$> ((:*:) <$> (switchContext $ fmap (orig . r) fa) <*> (switchContext $ fmap (orig . r) ga)) ,
+        res = inject <$> ((:*:) <$> (switchContext $ fmap (res . r) fa) <*> (switchContext $ fmap (res . r) ga))
     }
 
-instance (KF b :<: h) => EvalStep (KF b) (Fix h) where
+instance (KF b :<: h) => EvalStep (KF b) m (Fix h) where
     evalStepAlg r kf = EvalRes {
-        orig = In $ inj $ fmap (orig . r) kf ,
-        res = In $ inj $ fmap (res . r) kf
+        orig = inject <$> switchContext (fmap (orig . r) kf) ,
+        res = inject <$> switchContext (fmap (res . r) kf)
     }
 
 instance {-# OVERLAPPING #-} (Applicative m) => SwitchContext DeBVarF m where
